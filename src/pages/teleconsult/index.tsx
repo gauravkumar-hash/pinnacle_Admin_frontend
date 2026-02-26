@@ -49,7 +49,7 @@ export function TeleconsultScreen() {
 
     const connect = () => {
         connTimeRef.current = Date.now();
-        const wsUrl = `${API_URL.replace('https', 'wss')}/api/admin/teleconsult/ws?id=${session?.user.id}&date=${dateStr}`
+        const wsUrl = `${API_URL.replace('https', 'wss')}/admin/teleconsult/ws?id=${session?.user.id}&date=${dateStr}`
 
         console.log(`Connecting: ${wsUrl}`);
         const ws = new WebSocket(wsUrl);
