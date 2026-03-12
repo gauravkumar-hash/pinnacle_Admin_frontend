@@ -49,8 +49,15 @@ export function TeleconsultScreen() {
 
     const connect = () => {
         connTimeRef.current = Date.now();
-        const wsUrl = `${API_URL.replace('https', 'wss')}/api/admin/teleconsult/ws?id=${session?.user.id}&date=${dateStr}`
-
+        
+        // Use regex or double replace to catch both http -> ws and https -> wss
+        const baseWsUrl = API_URL.replace(/^http/, 'ws'); 
+        
+        // Ensure there are no double slashes if API_URL ends with /
+        const cleanBaseUrl = baseWsUrl.endsWith('/') ? baseWsUrl.slice(0, -1) : baseWsUrl;
+        
+        const wsUrl = `${cleanBaseUrl}/api/admin/walkin/ws?id=${session?.user.id}&date=${dateStr}`;
+    
         console.log(`Connecting: ${wsUrl}`);
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;

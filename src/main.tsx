@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import  { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import Login from './pages/Login.tsx'
@@ -35,7 +35,7 @@ import { CorporateCodesScreen } from './pages/corporate/codes.tsx'
 import { CorporateRatesScreen } from './pages/corporate/rates.tsx'
 import CorporateUsersUpload from './pages/corporate/upload.tsx'
 import ReconciliationScreen from './pages/reports/reconciliation.tsx'
-import HealthReportsScreen from './pages/reports/health-reports.tsx'
+
 import OnsiteHours from './pages/appointments/onsite-hours.tsx'
 import OnsiteBranches from './pages/appointments/onsite-branches.tsx'
 import OnsiteBranchDetails from './pages/appointments/onsite-branch-details.tsx'
@@ -53,7 +53,46 @@ import LandingPage from './pages/landing/index.tsx'
 import { YuuScreen } from './pages/yuu'
 import BranchOperatingHours from './pages/branches/operating-hours.tsx'
 import BranchAppointmentHours from './pages/branches/appointment-hours.tsx'
+import HealthReportTable from './components/HealthReportTable.tsx'
+const IPGuard = ({ children }: { children: React.ReactNode }) => {
+    const [allowed, setAllowed] = useState<boolean | null>(null);
+    
+    // 1. Put your IPs in an array for easy checking
+    const ALLOWED_IPS = [
+        "103.78.201.50", 
+        "125.20.70.10",
+        // Useful to keep for local testing
+    ];
 
+    useEffect(() => {
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => {
+                // 2. Check if the fetched IP is in your list
+                setAllowed(ALLOWED_IPS.includes(data.ip));
+            })
+            .catch((err) => {
+                console.error("IP Check failed", err);
+                setAllowed(false);
+            });
+    }, []);
+
+    // 3. Handle the states
+    if (allowed === null) return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            Validating connection...
+        </div>
+    );
+    
+    if (!allowed) return (
+        <div style={{ textAlign: 'center', marginTop: '20%' }}>
+            <h1>Access Denied</h1>
+            <p>Your are not authorized to access this panel.</p>
+        </div>
+    );
+
+    return <>{children}</>;
+};
 OpenAPI.BASE = import.meta.env.VITE_ADMIN_API_URL;
 OpenAPI.TOKEN = async () => {
     const { data, error } = await supabase.auth.getSession()
@@ -70,18 +109,20 @@ const RootApp = () => (
         <ReactQueryDevtools initialIsOpen={false} />
         <BrowserRouter>
             <App><ConfigProvider>
-                <AuthProvider>
-                    <AdminApp />
-                </AuthProvider>
+            <IPGuard> {/* Wrap the app here */}
+                        <AuthProvider>
+                            <AdminApp />
+                        </AuthProvider>
+                    </IPGuard>
             </ConfigProvider></App>
         </BrowserRouter>
     </QueryClientProvider>
 )
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
+
         <RootApp />
-    </React.StrictMode>,
+  
 )
 
 const ScreenLayout = () => (
@@ -120,20 +161,26 @@ function AdminApp() {
         <Routes>
             <Route element={<AuthRoute />}>
                 <Route index element={<IndexScreen />} />
+                
+                {/* 1. Teleconsult Routes */}
                 <Route path="/teleconsults" element={<ScreenLayout />}>
                     <Route index element={<TeleconsultScreen />} />
                     <Route path="ongoing" element={<OngoingTeleconsults />} />
                 </Route>
+
+                {/* 2. Teleconsult Delivery */}
                 <Route path="/teleconsult_delivery" element={<ScreenLayout />}>
                     <Route index element={<TeleconsultDeliveryScreen />} />
                 </Route>
-                <Route path="/zone" element={<ScreenLayout />}>
-                    <Route index element={<ZoneScreen />} />
-                    <Route path="configure" element={<ConfigurePinnacleZone />} />
+
+                {/* 3. Reports Group (Cleaned up) */}
+                <Route path="/reports" element={<ScreenLayout />}>
+                    <Route path="reconciliation" element={<ReconciliationScreen />} />
+                    {/* Use your new Dynamic Table component here */}
+                    <Route path="health-reports" element={<HealthReportTable />} />
                 </Route>
-                <Route path="/walkins" element={<ScreenLayout />}>
-                    <Route index element={<WalkinScreen />} />
-                </Route>
+
+                {/* 4. Appointments & Maintenance */}
                 <Route path="/appointments" element={<ScreenLayout />}>
                     <Route index element={<Appointment />} />
                     <Route path="services" element={<AppointmentServices />} />
@@ -143,6 +190,21 @@ function AdminApp() {
                     <Route path="onsite-branches" element={<OnsiteBranches />} />
                     <Route path="onsite-branches/:branchId" element={<OnsiteBranchDetails />} />
                 </Route>
+
+                <Route path="/corporate" element={<ScreenLayout />}>
+                    <Route path="codes" element={<CorporateCodesScreen />} />
+                    <Route path="rates" element={<CorporateRatesScreen />} />
+                    <Route path="upload" element={<CorporateUsersUpload />} />
+                </Route>
+
+                {/* 5. Other System Routes */}
+                <Route path="/zone" element={<ScreenLayout />}>
+                    <Route index element={<ZoneScreen />} />
+                    <Route path="configure" element={<ConfigurePinnacleZone />} />
+                </Route>
+                <Route path="/walkins" element={<ScreenLayout />}>
+                    <Route index element={<WalkinScreen />} />
+                </Route>
                 <Route path="/documents" element={<ScreenLayout />}>
                     <Route path="hidden" element={<HiddenDocumentsScreen />} />
                 </Route>
@@ -150,17 +212,8 @@ function AdminApp() {
                     <Route index element={<RatesScreen />} />
                     <Route path="dynamic" element={<DynamicRatesScreen />} />
                 </Route>
-                <Route path="/corporate" element={<ScreenLayout />}>
-                    <Route path="codes" element={<CorporateCodesScreen />} />
-                    <Route path="rates" element={<CorporateRatesScreen />} />
-                    <Route path="upload" element={<CorporateUsersUpload />} />
-                </Route>
                 <Route path="/notifications" element={<ScreenLayout />}>
                     <Route index element={<NotificationsScreen />} />
-                </Route>
-                <Route path="/reports" element={<ScreenLayout />}>
-                    <Route path="reconciliation" element={<ReconciliationScreen />} />
-                    <Route path="health-reports" element={<HealthReportsScreen />} />
                 </Route>
                 <Route path="/yuu" element={<ScreenLayout />}>
                     <Route index element={<YuuScreen />} />
@@ -188,17 +241,24 @@ function AdminApp() {
                 <Route path="/content" element={<ScreenLayout />}>
                     <Route index element={<ContentScreen />} />
                 </Route>
+
+                {/* Global catch-all inside Auth */}
                 <Route path="*" element={<NotFound />} />
             </Route>
+
+            {/* 6. External/Specific Layout Routes */}
             <Route path="/delivery" element={<DispatchDeliveryLayout />}>
                 <Route index element={<DispatchDeliveryScreen />} />
                 <Route path="sign" element={<SignDeliveryScreen />} />
+                {/* Allow health reports here too if you want it visible with Topbar */}
+                <Route path="health-reports" element={<HealthReportTable />} />
             </Route>
+
             <Route path="/set_password" element={<SetPassword />} />
             <Route path="/login" element={<Login />} />
             <Route path="/landing" element={<LandingPage />} />
         </Routes>
-    )
+    );
 }
 
 function NotFound() {
