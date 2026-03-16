@@ -55,6 +55,7 @@ const Sidebar = () => {
                 children: [
                     { key: '/reports/reconciliation', label: 'Reconciliation', icon: <DollarOutlined />}, 
                     { key: '/reports/health-reports', label: 'Health Reports', icon: <FileTextOutlined />}, 
+                    { key: '/reports/export-health-reports', label: 'Export Health Reports', icon: <FileTextOutlined />}, 
                 ],
             },
             {

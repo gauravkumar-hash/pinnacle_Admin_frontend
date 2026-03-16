@@ -35,6 +35,7 @@ import { CorporateCodesScreen } from './pages/corporate/codes.tsx'
 import { CorporateRatesScreen } from './pages/corporate/rates.tsx'
 import CorporateUsersUpload from './pages/corporate/upload.tsx'
 import ReconciliationScreen from './pages/reports/reconciliation.tsx'
+import HealthReportsScreen from './pages/reports/health-reports.tsx'
 
 import OnsiteHours from './pages/appointments/onsite-hours.tsx'
 import OnsiteBranches from './pages/appointments/onsite-branches.tsx'
@@ -176,8 +177,8 @@ function AdminApp() {
                 {/* 3. Reports Group (Cleaned up) */}
                 <Route path="/reports" element={<ScreenLayout />}>
                     <Route path="reconciliation" element={<ReconciliationScreen />} />
-                    {/* Use your new Dynamic Table component here */}
-                    <Route path="health-reports" element={<HealthReportTable />} />
+                    <Route path="health-reports" element={<HealthReportsScreen />} />
+                    <Route path="export-health-reports" element={<HealthReportTable />} />
                 </Route>
 
                 {/* 4. Appointments & Maintenance */}
