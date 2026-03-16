@@ -31,10 +31,28 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [ session, setSession ] = useState<Session | null>();
 
     useEffect(() => {
-        supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
+        // Restore existing session on mount
+        supabase.auth.getSession().then(({ data }) => {
+            setSession(data.session);
         });
-    }, []);
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT' || session === null) {
+                setSession(null);
+                // If the sign-out was triggered by a server-side revocation (e.g. newer login),
+                // show an informative message and redirect to login
+                if (event === 'SIGNED_OUT') {
+                    message.warning('Your session has expired or was signed in from another device. Please log in again.', 5);
+                    navigate('/login', { replace: true });
+                }
+            } else {
+                setSession(session);
+            }
+        });
+
+        // Clean up listener on unmount to prevent stale handlers
+        return () => subscription.unsubscribe();
+    }, [navigate]);
 
     const login = async ({ email, password }: { email: string; password: string }) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
