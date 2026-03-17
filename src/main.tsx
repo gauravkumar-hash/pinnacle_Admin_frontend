@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect } from 'react' // Removed useState as it's no longer used here
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import Login from './pages/Login.tsx'
@@ -35,6 +35,7 @@ import { CorporateCodesScreen } from './pages/corporate/codes.tsx'
 import { CorporateRatesScreen } from './pages/corporate/rates.tsx'
 import CorporateUsersUpload from './pages/corporate/upload.tsx'
 import ReconciliationScreen from './pages/reports/reconciliation.tsx'
+import HealthReportsScreen from './pages/reports/health-reports.tsx'
 
 import OnsiteHours from './pages/appointments/onsite-hours.tsx'
 import OnsiteBranches from './pages/appointments/onsite-branches.tsx'
@@ -55,6 +56,7 @@ import BranchOperatingHours from './pages/branches/operating-hours.tsx'
 import BranchAppointmentHours from './pages/branches/appointment-hours.tsx'
 import HealthReportTable from './components/HealthReportTable.tsx'
 
+// OpenAPI Configuration
 OpenAPI.BASE = import.meta.env.VITE_ADMIN_API_URL;
 OpenAPI.TOKEN = async () => {
     const { data, error } = await supabase.auth.getSession()
@@ -72,6 +74,7 @@ const RootApp = () => (
         <BrowserRouter>
             <App>
                 <ConfigProvider>
+                    {/* IPGuard has been removed from here */}
                     <AuthProvider>
                         <AdminApp />
                     </AuthProvider>
@@ -122,24 +125,21 @@ function AdminApp() {
             <Route element={<AuthRoute />}>
                 <Route index element={<IndexScreen />} />
                 
-                {/* 1. Teleconsult Routes */}
                 <Route path="/teleconsults" element={<ScreenLayout />}>
                     <Route index element={<TeleconsultScreen />} />
                     <Route path="ongoing" element={<OngoingTeleconsults />} />
                 </Route>
 
-                {/* 2. Teleconsult Delivery */}
                 <Route path="/teleconsult_delivery" element={<ScreenLayout />}>
                     <Route index element={<TeleconsultDeliveryScreen />} />
                 </Route>
 
-                {/* 3. Reports Group */}
                 <Route path="/reports" element={<ScreenLayout />}>
                     <Route path="reconciliation" element={<ReconciliationScreen />} />
-                    <Route path="health-reports" element={<HealthReportTable />} />
+                    <Route path="health-reports" element={<HealthReportsScreen />} />
+                    <Route path="export-health-reports" element={<HealthReportTable />} />
                 </Route>
 
-                {/* 4. Appointments & Maintenance */}
                 <Route path="/appointments" element={<ScreenLayout />}>
                     <Route index element={<Appointment />} />
                     <Route path="services" element={<AppointmentServices />} />
@@ -156,7 +156,6 @@ function AdminApp() {
                     <Route path="upload" element={<CorporateUsersUpload />} />
                 </Route>
 
-                {/* 5. Other System Routes */}
                 <Route path="/zone" element={<ScreenLayout />}>
                     <Route index element={<ZoneScreen />} />
                     <Route path="configure" element={<ConfigurePinnacleZone />} />
@@ -204,7 +203,6 @@ function AdminApp() {
                 <Route path="*" element={<NotFound />} />
             </Route>
 
-            {/* 6. External/Specific Layout Routes */}
             <Route path="/delivery" element={<DispatchDeliveryLayout />}>
                 <Route index element={<DispatchDeliveryScreen />} />
                 <Route path="sign" element={<SignDeliveryScreen />} />
