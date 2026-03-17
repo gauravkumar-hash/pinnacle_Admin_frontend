@@ -110,11 +110,11 @@ const RootApp = () => (
         <ReactQueryDevtools initialIsOpen={false} />
         <BrowserRouter>
             <App><ConfigProvider>
-            <IPGuard> {/* Wrap the app here */}
+          
                         <AuthProvider>
                             <AdminApp />
                         </AuthProvider>
-                    </IPGuard>
+          
             </ConfigProvider></App>
         </BrowserRouter>
     </QueryClientProvider>
