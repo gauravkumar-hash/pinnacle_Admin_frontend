@@ -1,4 +1,4 @@
-import  { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import Login from './pages/Login.tsx'
@@ -54,45 +54,7 @@ import { YuuScreen } from './pages/yuu'
 import BranchOperatingHours from './pages/branches/operating-hours.tsx'
 import BranchAppointmentHours from './pages/branches/appointment-hours.tsx'
 import HealthReportTable from './components/HealthReportTable.tsx'
-const IPGuard = ({ children }: { children: React.ReactNode }) => {
-    const [allowed, setAllowed] = useState<boolean | null>(null);
-    
-    // 1. Put your IPs in an array for easy checking
-    const ALLOWED_IPS = [
-        "103.78.201.50", 
-        "125.20.70.10",
-        // Useful to keep for local testing
-    ];
 
-    useEffect(() => {
-        fetch('https://api.ipify.org?format=json')
-            .then(res => res.json())
-            .then(data => {
-                // 2. Check if the fetched IP is in your list
-                setAllowed(ALLOWED_IPS.includes(data.ip));
-            })
-            .catch((err) => {
-                console.error("IP Check failed", err);
-                setAllowed(false);
-            });
-    }, []);
-
-    // 3. Handle the states
-    if (allowed === null) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-            Validating connection...
-        </div>
-    );
-    
-    if (!allowed) return (
-        <div style={{ textAlign: 'center', marginTop: '20%' }}>
-            <h1>Access Denied</h1>
-            <p>Your are not authorized to access this panel.</p>
-        </div>
-    );
-
-    return <>{children}</>;
-};
 OpenAPI.BASE = import.meta.env.VITE_ADMIN_API_URL;
 OpenAPI.TOKEN = async () => {
     const { data, error } = await supabase.auth.getSession()
@@ -108,21 +70,19 @@ const RootApp = () => (
     <QueryClientProvider client={queryClient}>
         <ReactQueryDevtools initialIsOpen={false} />
         <BrowserRouter>
-            <App><ConfigProvider>
-             {/* Wrap the app here */}
-                        <AuthProvider>
-                            <AdminApp />
-                        </AuthProvider>
-                  
-            </ConfigProvider></App>
+            <App>
+                <ConfigProvider>
+                    <AuthProvider>
+                        <AdminApp />
+                    </AuthProvider>
+                </ConfigProvider>
+            </App>
         </BrowserRouter>
     </QueryClientProvider>
 )
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-
-        <RootApp />
-  
+    <RootApp />
 )
 
 const ScreenLayout = () => (
@@ -173,10 +133,9 @@ function AdminApp() {
                     <Route index element={<TeleconsultDeliveryScreen />} />
                 </Route>
 
-                {/* 3. Reports Group (Cleaned up) */}
+                {/* 3. Reports Group */}
                 <Route path="/reports" element={<ScreenLayout />}>
                     <Route path="reconciliation" element={<ReconciliationScreen />} />
-                    {/* Use your new Dynamic Table component here */}
                     <Route path="health-reports" element={<HealthReportTable />} />
                 </Route>
 
@@ -242,7 +201,6 @@ function AdminApp() {
                     <Route index element={<ContentScreen />} />
                 </Route>
 
-                {/* Global catch-all inside Auth */}
                 <Route path="*" element={<NotFound />} />
             </Route>
 
@@ -250,7 +208,6 @@ function AdminApp() {
             <Route path="/delivery" element={<DispatchDeliveryLayout />}>
                 <Route index element={<DispatchDeliveryScreen />} />
                 <Route path="sign" element={<SignDeliveryScreen />} />
-                {/* Allow health reports here too if you want it visible with Topbar */}
                 <Route path="health-reports" element={<HealthReportTable />} />
             </Route>
 
