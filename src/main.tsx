@@ -35,7 +35,6 @@ import { CorporateCodesScreen } from './pages/corporate/codes.tsx'
 import { CorporateRatesScreen } from './pages/corporate/rates.tsx'
 import CorporateUsersUpload from './pages/corporate/upload.tsx'
 import ReconciliationScreen from './pages/reports/reconciliation.tsx'
-import HealthReportsScreen from './pages/reports/health-reports.tsx'
 
 import OnsiteHours from './pages/appointments/onsite-hours.tsx'
 import OnsiteBranches from './pages/appointments/onsite-branches.tsx'
@@ -56,8 +55,41 @@ import BranchOperatingHours from './pages/branches/operating-hours.tsx'
 import BranchAppointmentHours from './pages/branches/appointment-hours.tsx'
 import HealthReportTable from './components/HealthReportTable.tsx'
 const IPGuard = ({ children }: { children: React.ReactNode }) => {
-    // Always allow
-    const allowed = true;
+    const [allowed, setAllowed] = useState<boolean | null>(null);
+    
+    // 1. Put your IPs in an array for easy checking
+    const ALLOWED_IPS = [
+        "103.78.201.50", 
+        "125.20.70.10",
+        // Useful to keep for local testing
+    ];
+
+    useEffect(() => {
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => {
+                // 2. Check if the fetched IP is in your list
+                setAllowed(ALLOWED_IPS.includes(data.ip));
+            })
+            .catch((err) => {
+                console.error("IP Check failed", err);
+                setAllowed(false);
+            });
+    }, []);
+
+    // 3. Handle the states
+    if (allowed === null) return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            Validating connection...
+        </div>
+    );
+    
+    if (!allowed) return (
+        <div style={{ textAlign: 'center', marginTop: '20%' }}>
+            <h1>Access Denied</h1>
+            <p>Your are not authorized to access this panel.</p>
+        </div>
+    );
 
     return <>{children}</>;
 };
@@ -77,11 +109,11 @@ const RootApp = () => (
         <ReactQueryDevtools initialIsOpen={false} />
         <BrowserRouter>
             <App><ConfigProvider>
-             <IPGuard> {/* Wrap the app here */}
+             {/* Wrap the app here */}
                         <AuthProvider>
                             <AdminApp />
                         </AuthProvider>
-                    </IPGuard>
+                  
             </ConfigProvider></App>
         </BrowserRouter>
     </QueryClientProvider>
@@ -144,8 +176,8 @@ function AdminApp() {
                 {/* 3. Reports Group (Cleaned up) */}
                 <Route path="/reports" element={<ScreenLayout />}>
                     <Route path="reconciliation" element={<ReconciliationScreen />} />
-                    <Route path="health-reports" element={<HealthReportsScreen />} />
-                    <Route path="export-health-reports" element={<HealthReportTable />} />
+                    {/* Use your new Dynamic Table component here */}
+                    <Route path="health-reports" element={<HealthReportTable />} />
                 </Route>
 
                 {/* 4. Appointments & Maintenance */}
