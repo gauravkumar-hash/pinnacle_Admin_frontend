@@ -56,41 +56,8 @@ import BranchOperatingHours from './pages/branches/operating-hours.tsx'
 import BranchAppointmentHours from './pages/branches/appointment-hours.tsx'
 import HealthReportTable from './components/HealthReportTable.tsx'
 const IPGuard = ({ children }: { children: React.ReactNode }) => {
-    const [allowed, setAllowed] = useState<boolean | null>(null);
-    
-    // 1. Put your IPs in an array for easy checking
-    const ALLOWED_IPS = [
-        "103.78.201.50", 
-        "125.20.70.10",
-        // Useful to keep for local testing
-    ];
-
-    useEffect(() => {
-        fetch('https://api.ipify.org?format=json')
-            .then(res => res.json())
-            .then(data => {
-                // 2. Check if the fetched IP is in your list
-                setAllowed(ALLOWED_IPS.includes(data.ip));
-            })
-            .catch((err) => {
-                console.error("IP Check failed", err);
-                setAllowed(false);
-            });
-    }, []);
-
-    // 3. Handle the states
-    if (allowed === null) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-            Validating connection...
-        </div>
-    );
-    
-    if (!allowed) return (
-        <div style={{ textAlign: 'center', marginTop: '20%' }}>
-            <h1>Access Denied</h1>
-            <p>Your are not authorized to access this panel.</p>
-        </div>
-    );
+    // Always allow
+    const allowed = true;
 
     return <>{children}</>;
 };
@@ -110,11 +77,11 @@ const RootApp = () => (
         <ReactQueryDevtools initialIsOpen={false} />
         <BrowserRouter>
             <App><ConfigProvider>
-          
+             <IPGuard> {/* Wrap the app here */}
                         <AuthProvider>
                             <AdminApp />
                         </AuthProvider>
-          
+                    </IPGuard>
             </ConfigProvider></App>
         </BrowserRouter>
     </QueryClientProvider>
