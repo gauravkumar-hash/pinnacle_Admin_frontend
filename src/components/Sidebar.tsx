@@ -1,9 +1,11 @@
 import { useAuth } from '../context/AuthProvider';
+import { TeamOutlined } from '@ant-design/icons';
 import { ConfigProvider, Layout, Menu, MenuProps, Tag, Typography, theme } from 'antd';
 import PinnacleLogo from '../assets/pinnacle-logo.png'
-import { DatabaseOutlined, LogoutOutlined, UserOutlined, EnvironmentOutlined, CalendarOutlined, FileUnknownOutlined, SyncOutlined, VideoCameraOutlined, UsergroupAddOutlined, DollarOutlined, NotificationOutlined, FileTextOutlined, DeliveredProcedureOutlined, GiftOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, LogoutOutlined, UserOutlined, EnvironmentOutlined, CalendarOutlined, FileUnknownOutlined, SyncOutlined, VideoCameraOutlined, UsergroupAddOutlined, DollarOutlined, NotificationOutlined, FileTextOutlined, DeliveredProcedureOutlined, GiftOutlined,HistoryOutlined ,MedicineBoxOutlined} from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RoleTag } from './RoleTag';
+
 
 const { Sider } = Layout;
 type MenuItem = Required<MenuProps>['items'][number];
@@ -55,9 +57,20 @@ const Sidebar = () => {
                 children: [
                     { key: '/reports/reconciliation', label: 'Reconciliation', icon: <DollarOutlined />}, 
                     { key: '/reports/health-reports', label: 'Health Reports', icon: <FileTextOutlined />}, 
-                    { key: '/reports/export-health-reports', label: 'Export Health Reports', icon: <FileTextOutlined />}, 
+                       { key: '/reports/export-health-reports', label: 'Export Health Reports', icon: <HistoryOutlined />}, 
                 ],
             },
+        {
+            key: 'specialist_care',
+            label: 'Specialist Care',
+            type: 'group',
+            children: [
+                { key: '/specialist-care/specialisations', label: 'Specialisations', icon: <MedicineBoxOutlined /> },
+                { key: '/specialist-care/specialists', label: 'Specialists', icon: <TeamOutlined /> },
+                { key: '/specialist-care/requests', label: 'Appointment Requests', icon: <CalendarOutlined /> },
+                { key: '/specialist-care/email-template', label: 'Email Template', icon: <CalendarOutlined /> },
+            ],
+        },
             {
                 key: 'integrations',
                 label: 'Integrations',
