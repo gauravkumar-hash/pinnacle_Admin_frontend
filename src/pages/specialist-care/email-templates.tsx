@@ -7,7 +7,7 @@ import {
     EditOutlined, EyeOutlined, InfoCircleOutlined, SyncOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../context/AuthProvider';
+import { useAuth } from '../../context/AuthProvider';
 import { EmailTemplate, getEmailTemplates, seedEmailTemplates, updateEmailTemplate } from '@/apis/email-templates';
 
 
