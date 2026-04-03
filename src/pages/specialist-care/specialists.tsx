@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Layout, Typography, Button, Table, Switch, Space, Modal, Form, Input, InputNumber, Select, message, Popconfirm, Tag, Avatar, Upload } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, UploadOutlined } from '@ant-design/icons';
+import { Layout, Typography, Button, Table, Switch, Space, Modal, Form, Input, InputNumber, Select, message, Popconfirm, Tag, Avatar } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthProvider';
 import { getSpecialisations, getSpecialists, createSpecialist, updateSpecialist, deleteSpecialist, Specialist } from '../../apis/specialist-care';
