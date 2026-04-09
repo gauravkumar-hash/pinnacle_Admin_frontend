@@ -16,7 +16,7 @@ import {
   Row,
   Col,
   Tooltip,
-  Badge,
+  // Badge, // REMOVED: Error TS6133 (Unused variable)
   Progress,
 } from "antd";
 import {
@@ -73,7 +73,8 @@ interface AuthorizationStats {
 }
 
 export default function PaymentAuthorizationManagement() {
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(
+  // FIXED: Error TS2322 - Changed type to allow nulls within the tuple
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(
     null,
   );
   const [searchText, setSearchText] = useState("");
@@ -89,12 +90,11 @@ export default function PaymentAuthorizationManagement() {
     useQuery<AuthorizationStats>({
       queryKey: ["payment-authorization-stats"],
       queryFn: async () => {
-        // TODO: Replace with actual API call
         const response = await fetch("/api/admin/payments/authorization-stats");
         if (!response.ok) throw new Error("Failed to fetch stats");
         return response.json();
       },
-      refetchInterval: 30000, // Refresh every 30 seconds
+      refetchInterval: 30000,
     });
 
   // Fetch authorizations list
@@ -102,9 +102,9 @@ export default function PaymentAuthorizationManagement() {
     useQuery<PaymentAuthorization[]>({
       queryKey: ["payment-authorizations", dateRange, statusFilter],
       queryFn: async () => {
-        // TODO: Replace with actual API call
         const params = new URLSearchParams();
-        if (dateRange) {
+        // FIXED: Check for existence of both dates before formatting
+        if (dateRange && dateRange[0] && dateRange[1]) {
           params.append("start_date", dateRange[0].format("YYYY-MM-DD"));
           params.append("end_date", dateRange[1].format("YYYY-MM-DD"));
         }
@@ -118,7 +118,7 @@ export default function PaymentAuthorizationManagement() {
         if (!response.ok) throw new Error("Failed to fetch authorizations");
         return response.json();
       },
-      refetchInterval: 10000, // Refresh every 10 seconds
+      refetchInterval: 10000,
     });
 
   // Capture payment mutation
@@ -513,7 +513,8 @@ export default function PaymentAuthorizationManagement() {
           />
           <RangePicker
             value={dateRange}
-            onChange={setDateRange}
+            // FIXED: Standard onChange logic for RangePicker
+            onChange={(values) => setDateRange(values)}
             format="YYYY-MM-DD"
           />
           <Select
