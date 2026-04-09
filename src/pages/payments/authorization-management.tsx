@@ -16,7 +16,6 @@ import {
   Row,
   Col,
   Tooltip,
-
   Progress,
 } from "antd";
 import {
@@ -513,7 +512,13 @@ export default function PaymentAuthorizationManagement() {
           />
           <RangePicker
             value={dateRange}
-            onChange={setDateRange}
+            onChange={(dates) => {
+              if (dates && dates[0] && dates[1]) {
+                setDateRange([dates[0], dates[1]]);
+              } else {
+                setDateRange(null);
+              }
+            }}
             format="YYYY-MM-DD"
           />
           <Select
@@ -658,3 +663,4 @@ export default function PaymentAuthorizationManagement() {
     </div>
   );
 }
+
