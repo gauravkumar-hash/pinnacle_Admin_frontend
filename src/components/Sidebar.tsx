@@ -178,9 +178,9 @@ const Sidebar = () => {
             icon: <MedicineBoxOutlined />,
           },
           {
-            key: "/specialist-care/specialists",
-            label: "Specialists",
-            icon: <TeamOutlined />,
+            key: "/specialist-care/services",
+            label: "Services",
+            icon: <MedicineBoxOutlined />,
           },
           {
             key: "/specialist-care/requests",

@@ -41,13 +41,23 @@ export interface Specialist {
   title?: string;
   name: string;
   image_url?: string;
+  clinic_name?: string;
+  consultation_fee?: number;
+  clinic_photo_path?: string;
+  banner_image_path?: string;
   credentials?: string;
   short_bio?: string;
   full_bio?: string;
   languages?: string;
+  years_of_practice?: number;
+  hospital_affiliations?: string;
+  board_certifications?: string;
+  awards?: string;
   appointment_email: string;
   contact_email?: string;
   contact_phone?: string;
+  insurance_tpa?: string;
+  insurance_shield_plan?: string;
   available_days?: string;
   display_order: number;
   active: boolean;
@@ -58,7 +68,8 @@ export interface Specialist {
 export interface AppointmentRequest {
   id: number;
   specialisation_id: number;
-  specialist_id: number;
+  specialist_id?: number;
+  service_id?: number;
   patient_name: string;
   patient_dob?: string;
   contact_number: string;
@@ -66,11 +77,12 @@ export interface AppointmentRequest {
   preferred_days?: string;
   preferred_time?: string;
   reason?: string;
-  status: "pending" | "confirmed" | "rejected" | "completed";
+  status: "requested" | "confirmed" | "rejected" | "completed" | "rescheduled" | "cancelled";
   status_message?: string;
   submitted_at: string;
   updated_at?: string;
   specialist?: { id: number; name: string; title?: string; image_url?: string };
+  service?: { id: number; service_name: string; clinic_name: string };
 }
 
 // ── Specialisations ────────────────────────────────────────────────────────────
@@ -242,6 +254,38 @@ export const updateRequestStatus = async (
 ) => {
   const res = await fetch(`${URLS.requests}/admin/${id}/status`, {
     method: "PATCH",
+    headers: getHeaders(session),
+    body: JSON.stringify(body),
+  });
+  return res.json();
+};
+
+export const rescheduleRequest = async (
+  session: Session,
+  id: number,
+  body: { preferred_days: string; preferred_time: string },
+  onError: onErrorCallback,
+) => {
+  const res = await fetch(`${URLS.requests}/${id}/reschedule`, {
+    method: "POST",
+    headers: getHeaders(session),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    onError(res.status, (await res.json())?.detail);
+    return;
+  }
+  return res.json();
+};
+
+export const cancelRequest = async (
+  session: Session,
+  id: number,
+  body: { reason: string },
+  onError: onErrorCallback,
+) => {
+  const res = await fetch(`${URLS.requests}/${id}/cancel`, {
+    method: "POST",
     headers: getHeaders(session),
     body: JSON.stringify(body),
   });

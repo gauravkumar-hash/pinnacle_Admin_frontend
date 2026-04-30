@@ -30,6 +30,8 @@ import {
   getAppointmentRequests,
   updateRequestStatus,
   getSpecialists,
+  rescheduleRequest,
+  cancelRequest,
   AppointmentRequest,
 } from "../../apis/specialist-care";
 import dayjs from "dayjs";
@@ -40,9 +42,12 @@ const { Option } = Select;
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "orange",
+  requested: "orange",
   confirmed: "green",
   rejected: "red",
   completed: "blue",
+  rescheduled: "cyan",
+  cancelled: "volcano",
 };
 
 export const AppointmentRequestsScreen = () => {
@@ -57,7 +62,15 @@ export const AppointmentRequestsScreen = () => {
   const [statusModal, setStatusModal] = useState<AppointmentRequest | null>(
     null,
   );
+  const [rescheduleModal, setRescheduleModal] = useState<AppointmentRequest | null>(
+    null,
+  );
+  const [cancelModal, setCancelModal] = useState<AppointmentRequest | null>(
+    null,
+  );
   const [form] = Form.useForm();
+  const [rescheduleForm] = Form.useForm();
+  const [cancelForm] = Form.useForm();
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${msg}`);
@@ -86,6 +99,28 @@ export const AppointmentRequestsScreen = () => {
       messageApi.success("Status updated");
       setStatusModal(null);
       form.resetFields();
+    },
+  });
+
+  const rescheduleMutation = useMutation({
+    mutationFn: (values: { preferred_days: string; preferred_time: string }) =>
+      rescheduleRequest(session!, rescheduleModal!.id, values, onError),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointment-requests"] });
+      messageApi.success("Appointment rescheduled and notification sent");
+      setRescheduleModal(null);
+      rescheduleForm.resetFields();
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (values: { reason: string }) =>
+      cancelRequest(session!, cancelModal!.id, values, onError),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointment-requests"] });
+      messageApi.success("Appointment cancelled and notification sent");
+      setCancelModal(null);
+      cancelForm.resetFields();
     },
   });
 
@@ -131,22 +166,32 @@ export const AppointmentRequestsScreen = () => {
       ),
     },
     {
-      title: "Specialist",
-      render: (_: any, r: AppointmentRequest) =>
-        r.specialist ? (
-          <Space>
-            <Avatar
-              src={r.specialist.image_url}
-              icon={<UserOutlined />}
-              size="small"
-            />
-            <span>
-              {r.specialist.title} {r.specialist.name}
-            </span>
-          </Space>
-        ) : (
-          "-"
-        ),
+      title: "Requested for",
+      render: (_: any, r: AppointmentRequest) => {
+        if (r.specialist) {
+          return (
+            <Space>
+              <Avatar
+                src={r.specialist.image_url}
+                icon={<UserOutlined />}
+                size="small"
+              />
+              <span>
+                {r.specialist.title} {r.specialist.name}
+              </span>
+            </Space>
+          );
+        }
+        if (r.service) {
+          return (
+            <Space>
+              <Avatar icon={<EditOutlined />} size="small" />
+              <span>{r.service.service_name}</span>
+            </Space>
+          );
+        }
+        return "-";
+      },
     },
     {
       title: "Preferred",
@@ -160,12 +205,15 @@ export const AppointmentRequestsScreen = () => {
     {
       title: "Status",
       dataIndex: "status",
-      render: (v: string) => (
-        <Badge
-          color={STATUS_COLOR[v]}
-          text={<Tag color={STATUS_COLOR[v]}>{v.toUpperCase()}</Tag>}
-        />
-      ),
+      render: (v: string) => {
+        const displayStatus = v === "pending" ? "requested" : v;
+        return (
+          <Badge
+            color={STATUS_COLOR[v]}
+            text={<Tag color={STATUS_COLOR[v]}>{displayStatus.toUpperCase()}</Tag>}
+          />
+        );
+      },
     },
     {
       title: "Message",
@@ -190,7 +238,21 @@ export const AppointmentRequestsScreen = () => {
             type="primary"
             onClick={() => openStatusModal(record)}
           >
-            Update Status
+            Status
+          </Button>
+          <Button
+            size="small"
+            style={{ backgroundColor: "#13c2c2", color: "white" }}
+            onClick={() => setRescheduleModal(record)}
+          >
+            Reschedule
+          </Button>
+          <Button
+            size="small"
+            danger
+            onClick={() => setCancelModal(record)}
+          >
+            Cancel
           </Button>
         </Space>
       ),
@@ -212,8 +274,10 @@ export const AppointmentRequestsScreen = () => {
               style={{ width: 160 }}
               onChange={setStatusFilter}
             >
-              <Option value="pending">Pending</Option>
+              <Option value="requested">Requested</Option>
               <Option value="confirmed">Confirmed</Option>
+              <Option value="rescheduled">Rescheduled</Option>
+              <Option value="cancelled">Cancelled</Option>
               <Option value="rejected">Rejected</Option>
               <Option value="completed">Completed</Option>
             </Select>
@@ -290,9 +354,11 @@ export const AppointmentRequestsScreen = () => {
                   </Descriptions.Item>
                 )}
 
-                <Descriptions.Item label="Specialist">
+                <Descriptions.Item label="Specialist / Service">
                   {viewRecord.specialist
                     ? `${viewRecord.specialist.title} ${viewRecord.specialist.name}`
+                    : viewRecord.service
+                    ? viewRecord.service.service_name
                     : "—"}
                 </Descriptions.Item>
                 <Descriptions.Item label="Preferred Days">
@@ -396,8 +462,9 @@ export const AppointmentRequestsScreen = () => {
               rules={[{ required: true }]}
             >
               <Select>
-                <Option value="pending">Pending</Option>
                 <Option value="confirmed">Confirmed</Option>
+                <Option value="rescheduled">Rescheduled</Option>
+                <Option value="cancelled">Cancelled</Option>
                 <Option value="rejected">Rejected</Option>
                 <Option value="completed">Completed</Option>
               </Select>
@@ -408,6 +475,77 @@ export const AppointmentRequestsScreen = () => {
                 placeholder="e.g. Your appointment is confirmed for Monday morning. Please arrive 10 minutes early."
               />
             </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Reschedule Modal */}
+        <Modal
+          title="Reschedule Appointment"
+          open={!!rescheduleModal}
+          onCancel={() => {
+            setRescheduleModal(null);
+            rescheduleForm.resetFields();
+          }}
+          onOk={() => rescheduleForm.submit()}
+          confirmLoading={rescheduleMutation.isPending}
+        >
+          <Form
+            form={rescheduleForm}
+            layout="vertical"
+            onFinish={(v) => rescheduleMutation.mutate(v)}
+            initialValues={{
+              preferred_days: rescheduleModal?.preferred_days,
+              preferred_time: rescheduleModal?.preferred_time,
+            }}
+          >
+            <Form.Item
+              name="preferred_days"
+              label="New Preferred Days"
+              rules={[{ required: true }]}
+            >
+              <Input placeholder="e.g. Monday, Wednesday" />
+            </Form.Item>
+            <Form.Item
+              name="preferred_time"
+              label="New Preferred Time Slot"
+              rules={[{ required: true }]}
+            >
+              <Input placeholder="e.g. 10:00 AM - 12:00 PM" />
+            </Form.Item>
+            <p className="text-xs text-gray-500">
+              An email will be sent to the patient notifying them of the rescheduled details.
+            </p>
+          </Form>
+        </Modal>
+
+        {/* Cancel Modal */}
+        <Modal
+          title="Cancel Appointment"
+          open={!!cancelModal}
+          onCancel={() => {
+            setCancelModal(null);
+            cancelForm.resetFields();
+          }}
+          onOk={() => cancelForm.submit()}
+          confirmLoading={cancelMutation.isPending}
+          okText="Confirm Cancellation"
+          okButtonProps={{ danger: true }}
+        >
+          <Form
+            form={cancelForm}
+            layout="vertical"
+            onFinish={(v) => cancelMutation.mutate(v)}
+          >
+            <Form.Item
+              name="reason"
+              label="Reason for Cancellation"
+              rules={[{ required: true, message: "Please provide a reason for cancellation" }]}
+            >
+              <Input.TextArea rows={4} placeholder="e.g. Patient requested cancellation via phone." />
+            </Form.Item>
+            <p className="text-xs text-gray-500">
+              An email will be sent to the patient notifying them of the cancellation.
+            </p>
           </Form>
         </Modal>
       </Content>
