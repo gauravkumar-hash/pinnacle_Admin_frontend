@@ -29,9 +29,6 @@ import { useAuth } from "../../context/AuthProvider";
 import {
   getAppointmentRequests,
   updateRequestStatus,
-  getSpecialists,
-  rescheduleRequest,
-  cancelRequest,
   AppointmentRequest,
 } from "../../apis/specialist-care";
 import dayjs from "dayjs";
@@ -55,39 +52,19 @@ export const AppointmentRequestsScreen = () => {
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [specialistFilter, setSpecialistFilter] = useState<
-    number | undefined
-  >();
   const [viewRecord, setViewRecord] = useState<AppointmentRequest | null>(null);
-  const [statusModal, setStatusModal] = useState<AppointmentRequest | null>(
-    null,
-  );
-  const [rescheduleModal, setRescheduleModal] = useState<AppointmentRequest | null>(
-    null,
-  );
-  const [cancelModal, setCancelModal] = useState<AppointmentRequest | null>(
-    null,
-  );
+  const [statusModal, setStatusModal] = useState<AppointmentRequest | null>(null);
   const [form] = Form.useForm();
-  const [rescheduleForm] = Form.useForm();
-  const [cancelForm] = Form.useForm();
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${msg}`);
 
   const { data: requests = [], isLoading } = useQuery({
-    queryKey: ["appointment-requests", statusFilter, specialistFilter],
+    queryKey: ["appointment-requests", statusFilter],
     queryFn: () =>
       getAppointmentRequests(session!, onError, {
         status: statusFilter,
-        specialist_id: specialistFilter,
       }),
-    enabled: !!session,
-  });
-
-  const { data: specialists = [] } = useQuery({
-    queryKey: ["specialists"],
-    queryFn: () => getSpecialists(session!, onError),
     enabled: !!session,
   });
 
@@ -99,28 +76,6 @@ export const AppointmentRequestsScreen = () => {
       messageApi.success("Status updated");
       setStatusModal(null);
       form.resetFields();
-    },
-  });
-
-  const rescheduleMutation = useMutation({
-    mutationFn: (values: { preferred_days: string; preferred_time: string }) =>
-      rescheduleRequest(session!, rescheduleModal!.id, values, onError),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["appointment-requests"] });
-      messageApi.success("Appointment rescheduled and notification sent");
-      setRescheduleModal(null);
-      rescheduleForm.resetFields();
-    },
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: (values: { reason: string }) =>
-      cancelRequest(session!, cancelModal!.id, values, onError),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["appointment-requests"] });
-      messageApi.success("Appointment cancelled and notification sent");
-      setCancelModal(null);
-      cancelForm.resetFields();
     },
   });
 
@@ -137,48 +92,28 @@ export const AppointmentRequestsScreen = () => {
       title: "Submitted",
       dataIndex: "submitted_at",
       render: (v: string) => dayjs(v).format("DD MMM YYYY HH:mm"),
-      sorter: (a: AppointmentRequest, b: AppointmentRequest) =>
+      sorter: (a: any, b: any) =>
         dayjs(a.submitted_at).unix() - dayjs(b.submitted_at).unix(),
       defaultSortOrder: "descend" as const,
     },
     {
       title: "Patient",
-      render: (_: any, r: AppointmentRequest) => (
+      render: (_: any, r: any) => (
         <div>
-          <div>
-            <strong>{r.patient_name}</strong>
-          </div>
+          <div><strong>{r.patient_name}</strong></div>
           <div className="text-xs text-gray-500">{r.email}</div>
           <div className="text-xs text-gray-500">{r.contact_number}</div>
-          {(r as any).insurance && (
-            <div className="text-xs text-blue-600 mt-1">
-              <SafetyOutlined /> {(r as any).insurance}
-            </div>
-          )}
-          {(r as any).uploaded_images &&
-            (r as any).uploaded_images.length > 0 && (
-              <div className="text-xs text-green-600 mt-1">
-                <FileImageOutlined /> {(r as any).uploaded_images.length}{" "}
-                image(s)
-              </div>
-            )}
         </div>
       ),
     },
     {
       title: "Requested for",
-      render: (_: any, r: AppointmentRequest) => {
+      render: (_: any, r: any) => {
         if (r.specialist) {
           return (
             <Space>
-              <Avatar
-                src={r.specialist.image_url}
-                icon={<UserOutlined />}
-                size="small"
-              />
-              <span>
-                {r.specialist.title} {r.specialist.name}
-              </span>
+              <Avatar src={r.specialist.image_url} icon={<UserOutlined />} size="small" />
+              <span>{r.specialist.title} {r.specialist.name}</span>
             </Space>
           );
         }
@@ -194,13 +129,21 @@ export const AppointmentRequestsScreen = () => {
       },
     },
     {
-      title: "Preferred",
-      render: (_: any, r: AppointmentRequest) => (
-        <div>
-          <div>{r.preferred_days || "-"}</div>
-          <div className="text-xs text-gray-500">{r.preferred_time || ""}</div>
-        </div>
-      ),
+      title: "Preferred Slot",
+      render: (_: any, r: any) => {
+        // Logic to check if 'date' is an actual date string or a day name
+        const isActualDate = r.date && /\d{4}-\d{2}-\d{2}/.test(r.date);
+        return (
+          <div>
+            <div style={{ fontWeight: 600 }}>
+              {isActualDate ? dayjs(r.date).format("DD MMM YYYY") : (r.date || "Flexible")}
+            </div>
+            <div className="text-xs text-gray-400">
+              {r.time_slot || "Anytime"}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: "Status",
@@ -208,21 +151,13 @@ export const AppointmentRequestsScreen = () => {
       render: (v: string) => {
         const displayStatus = v === "pending" ? "requested" : v;
         return (
-          <Badge
-            color={STATUS_COLOR[v]}
-            text={<Tag color={STATUS_COLOR[v]}>{displayStatus.toUpperCase()}</Tag>}
-          />
+          <Tag color={STATUS_COLOR[v]}>{displayStatus.toUpperCase()}</Tag>
         );
       },
     },
     {
-      title: "Message",
-      dataIndex: "status_message",
-      ellipsis: true,
-      render: (v: string) => v || <span className="text-gray-400">—</span>,
-    },
-    {
       title: "Actions",
+      width: 150,
       render: (_: any, record: AppointmentRequest) => (
         <Space>
           <Button
@@ -239,20 +174,6 @@ export const AppointmentRequestsScreen = () => {
             onClick={() => openStatusModal(record)}
           >
             Status
-          </Button>
-          <Button
-            size="small"
-            style={{ backgroundColor: "#13c2c2", color: "white" }}
-            onClick={() => setRescheduleModal(record)}
-          >
-            Reschedule
-          </Button>
-          <Button
-            size="small"
-            danger
-            onClick={() => setCancelModal(record)}
-          >
-            Cancel
           </Button>
         </Space>
       ),
@@ -271,7 +192,7 @@ export const AppointmentRequestsScreen = () => {
             <Select
               allowClear
               placeholder="Filter by status"
-              style={{ width: 160 }}
+              style={{ width: 180 }}
               onChange={setStatusFilter}
             >
               <Option value="requested">Requested</Option>
@@ -281,18 +202,6 @@ export const AppointmentRequestsScreen = () => {
               <Option value="rejected">Rejected</Option>
               <Option value="completed">Completed</Option>
             </Select>
-            <Select
-              allowClear
-              placeholder="Filter by specialist"
-              style={{ width: 200 }}
-              onChange={setSpecialistFilter}
-            >
-              {specialists.map((s) => (
-                <Option key={s.id} value={s.id}>
-                  {s.title} {s.name}
-                </Option>
-              ))}
-            </Select>
           </Space>
         </div>
 
@@ -301,23 +210,23 @@ export const AppointmentRequestsScreen = () => {
           loading={isLoading}
           dataSource={requests}
           columns={columns}
+          scroll={{ x: "max-content" }}
         />
 
         {/* View Detail Modal */}
         <Modal
-          title="Request Details"
+          title="Appointment Details"
           open={!!viewRecord}
           onCancel={() => setViewRecord(null)}
           footer={[
-            <Button key="close" onClick={() => setViewRecord(null)}>
-              Close
-            </Button>,
+            <Button key="close" onClick={() => setViewRecord(null)}>Close</Button>,
             <Button
               key="update"
               type="primary"
               onClick={() => {
+                const rec = viewRecord;
                 setViewRecord(null);
-                openStatusModal(viewRecord!);
+                openStatusModal(rec!);
               }}
             >
               Update Status
@@ -326,117 +235,25 @@ export const AppointmentRequestsScreen = () => {
           width={700}
         >
           {viewRecord && (
-            <>
-              <Descriptions bordered column={1} size="small">
-                <Descriptions.Item label="Patient Name">
-                  {viewRecord.patient_name}
-                </Descriptions.Item>
-                <Descriptions.Item label="Date of Birth">
-                  {viewRecord.patient_dob || "—"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Contact">
-                  {viewRecord.contact_number}
-                </Descriptions.Item>
-                <Descriptions.Item label="Email">
-                  {viewRecord.email}
-                </Descriptions.Item>
-
-                {/* Insurance Information */}
-                {(viewRecord as any).insurance && (
-                  <Descriptions.Item
-                    label={
-                      <span>
-                        <SafetyOutlined /> Insurance
-                      </span>
-                    }
-                  >
-                    <Tag color="blue">{(viewRecord as any).insurance}</Tag>
-                  </Descriptions.Item>
-                )}
-
-                <Descriptions.Item label="Specialist / Service">
-                  {viewRecord.specialist
-                    ? `${viewRecord.specialist.title} ${viewRecord.specialist.name}`
-                    : viewRecord.service
-                    ? viewRecord.service.service_name
-                    : "—"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Preferred Days">
-                  {viewRecord.preferred_days || "—"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Preferred Time">
-                  {viewRecord.preferred_time || "—"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Reason">
-                  {viewRecord.reason || "—"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Status">
-                  <Tag color={STATUS_COLOR[viewRecord.status]}>
-                    {viewRecord.status.toUpperCase()}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Status Message">
-                  {viewRecord.status_message || "—"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Submitted At">
-                  {dayjs(viewRecord.submitted_at).format("DD MMM YYYY HH:mm")}
-                </Descriptions.Item>
-              </Descriptions>
-
-              {/* Uploaded Images Section */}
-              {(viewRecord as any).uploaded_images &&
-                (viewRecord as any).uploaded_images.length > 0 && (
-                  <Card
-                    title={
-                      <span>
-                        <FileImageOutlined /> Uploaded Images
-                      </span>
-                    }
-                    size="small"
-                    style={{ marginTop: 16 }}
-                  >
-                    <Space wrap size="middle">
-                      <Image.PreviewGroup>
-                        {(viewRecord as any).uploaded_images.map(
-                          (url: string, idx: number) => (
-                            <Image
-                              key={idx}
-                              src={url}
-                              alt={`Upload ${idx + 1}`}
-                              width={120}
-                              height={120}
-                              style={{
-                                objectFit: "cover",
-                                borderRadius: 8,
-                                border: "1px solid #d9d9d9",
-                              }}
-                              placeholder={
-                                <div
-                                  style={{
-                                    width: 120,
-                                    height: 120,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    background: "#f0f0f0",
-                                  }}
-                                >
-                                  <FileImageOutlined
-                                    style={{ fontSize: 24, color: "#999" }}
-                                  />
-                                </div>
-                              }
-                            />
-                          ),
-                        )}
-                      </Image.PreviewGroup>
-                    </Space>
-                    <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
-                      Click on images to view full size
-                    </div>
-                  </Card>
-                )}
-            </>
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Patient Name">{viewRecord.patient_name}</Descriptions.Item>
+              <Descriptions.Item label="Contact">{viewRecord.contact_number}</Descriptions.Item>
+              <Descriptions.Item label="Email">{viewRecord.email}</Descriptions.Item>
+              <Descriptions.Item label="Preferred Date">
+                {/\d{4}-\d{2}-\d{2}/.test((viewRecord as any).date) 
+                  ? dayjs((viewRecord as any).date).format("dddd, DD MMMM YYYY") 
+                  : (viewRecord as any).date}
+              </Descriptions.Item>
+              <Descriptions.Item label="Preferred Time Slot">
+                <Tag color="processing">{(viewRecord as any).time_slot}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Status">
+                <Tag color={STATUS_COLOR[viewRecord.status]}>{viewRecord.status.toUpperCase()}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Message From Admin">
+                {viewRecord.status_message || "—"}
+              </Descriptions.Item>
+            </Descriptions>
           )}
         </Modal>
 
@@ -456,11 +273,7 @@ export const AppointmentRequestsScreen = () => {
             layout="vertical"
             onFinish={(v) => updateMutation.mutate(v)}
           >
-            <Form.Item
-              name="status"
-              label="Status"
-              rules={[{ required: true }]}
-            >
+            <Form.Item name="status" label="New Status" rules={[{ required: true }]}>
               <Select>
                 <Option value="confirmed">Confirmed</Option>
                 <Option value="rescheduled">Rescheduled</Option>
@@ -469,83 +282,9 @@ export const AppointmentRequestsScreen = () => {
                 <Option value="completed">Completed</Option>
               </Select>
             </Form.Item>
-            <Form.Item name="status_message" label="Message to Patient">
-              <Input.TextArea
-                rows={3}
-                placeholder="e.g. Your appointment is confirmed for Monday morning. Please arrive 10 minutes early."
-              />
+            <Form.Item name="status_message" label="Note to Patient">
+              <Input.TextArea rows={3} placeholder="Add a reason or instructions..." />
             </Form.Item>
-          </Form>
-        </Modal>
-
-        {/* Reschedule Modal */}
-        <Modal
-          title="Reschedule Appointment"
-          open={!!rescheduleModal}
-          onCancel={() => {
-            setRescheduleModal(null);
-            rescheduleForm.resetFields();
-          }}
-          onOk={() => rescheduleForm.submit()}
-          confirmLoading={rescheduleMutation.isPending}
-        >
-          <Form
-            form={rescheduleForm}
-            layout="vertical"
-            onFinish={(v) => rescheduleMutation.mutate(v)}
-            initialValues={{
-              preferred_days: rescheduleModal?.preferred_days,
-              preferred_time: rescheduleModal?.preferred_time,
-            }}
-          >
-            <Form.Item
-              name="preferred_days"
-              label="New Preferred Days"
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="e.g. Monday, Wednesday" />
-            </Form.Item>
-            <Form.Item
-              name="preferred_time"
-              label="New Preferred Time Slot"
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="e.g. 10:00 AM - 12:00 PM" />
-            </Form.Item>
-            <p className="text-xs text-gray-500">
-              An email will be sent to the patient notifying them of the rescheduled details.
-            </p>
-          </Form>
-        </Modal>
-
-        {/* Cancel Modal */}
-        <Modal
-          title="Cancel Appointment"
-          open={!!cancelModal}
-          onCancel={() => {
-            setCancelModal(null);
-            cancelForm.resetFields();
-          }}
-          onOk={() => cancelForm.submit()}
-          confirmLoading={cancelMutation.isPending}
-          okText="Confirm Cancellation"
-          okButtonProps={{ danger: true }}
-        >
-          <Form
-            form={cancelForm}
-            layout="vertical"
-            onFinish={(v) => cancelMutation.mutate(v)}
-          >
-            <Form.Item
-              name="reason"
-              label="Reason for Cancellation"
-              rules={[{ required: true, message: "Please provide a reason for cancellation" }]}
-            >
-              <Input.TextArea rows={4} placeholder="e.g. Patient requested cancellation via phone." />
-            </Form.Item>
-            <p className="text-xs text-gray-500">
-              An email will be sent to the patient notifying them of the cancellation.
-            </p>
           </Form>
         </Modal>
       </Content>

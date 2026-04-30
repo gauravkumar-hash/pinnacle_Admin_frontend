@@ -14,14 +14,12 @@ import {
   message,
   Popconfirm,
   Tag,
-
   Upload,
 } from "antd";
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-
   UploadOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";
@@ -63,7 +61,6 @@ export const ServicesScreen = () => {
   const [editing, setEditing] = useState<Service | null>(null);
   const [form] = Form.useForm();
   const [clinicPhotoFile, setClinicPhotoFile] = useState<UploadFile[]>([]);
-  const [bannerImageFile, setBannerImageFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${msg}`);
@@ -119,9 +116,6 @@ export const ServicesScreen = () => {
       if (clinicPhotoFile.length > 0 && clinicPhotoFile[0].originFileObj) {
         formData.append("clinic_photo", clinicPhotoFile[0].originFileObj);
       }
-      if (bannerImageFile.length > 0 && bannerImageFile[0].originFileObj) {
-        formData.append("banner_image", bannerImageFile[0].originFileObj);
-      }
 
       if (editing)
         return updateService(session!, editing.id, formData, onError);
@@ -134,7 +128,6 @@ export const ServicesScreen = () => {
       form.resetFields();
       setEditing(null);
       setClinicPhotoFile([]);
-      setBannerImageFile([]);
     },
   });
 
@@ -173,13 +166,6 @@ export const ServicesScreen = () => {
     } else {
       setClinicPhotoFile([]);
     }
-    if (record.banner_image_path) {
-      setBannerImageFile([
-        { uid: "-2", name: "banner_image", status: "done", url: record.banner_image_path },
-      ]);
-    } else {
-      setBannerImageFile([]);
-    }
 
     setModalOpen(true);
   };
@@ -188,7 +174,6 @@ export const ServicesScreen = () => {
     setEditing(null);
     form.resetFields();
     setClinicPhotoFile([]);
-    setBannerImageFile([]);
     setModalOpen(true);
   };
 
@@ -289,7 +274,6 @@ export const ServicesScreen = () => {
             setEditing(null);
             form.resetFields();
             setClinicPhotoFile([]);
-            setBannerImageFile([]);
           }}
           onOk={() => form.submit()}
           confirmLoading={saveMutation.isPending}
@@ -331,7 +315,7 @@ export const ServicesScreen = () => {
               </Form.Item>
               <Form.Item
                 name="consultation_fee"
-                label="Consultation Fee (SGD)"
+                label="Consultation Fee ($)"
                 rules={[{ required: true, type: "number", min: 0 }]}
               >
                 <InputNumber step={0.01} placeholder="e.g. 100.00" style={{ width: "100%" }} />
@@ -385,22 +369,7 @@ export const ServicesScreen = () => {
                   )}
                 </Upload>
               </Form.Item>
-              <Form.Item label="Banner Image" className="col-span-2">
-                <Upload
-                  listType="picture-card"
-                  fileList={bannerImageFile}
-                  maxCount={1}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setBannerImageFile(fileList)}
-                >
-                  {bannerImageFile.length === 0 && (
-                    <div>
-                      <UploadOutlined />
-                      <div style={{ marginTop: 8 }}>Upload Banner Image</div>
-                    </div>
-                  )}
-                </Upload>
-              </Form.Item>
+
               <Form.Item name="languages" label="Languages">
                 <Input placeholder="e.g. English, Mandarin, Malay" />
               </Form.Item>
