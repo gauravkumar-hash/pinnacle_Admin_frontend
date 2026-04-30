@@ -13,16 +13,15 @@ import {
   message,
   Descriptions,
   Avatar,
-  Badge,
-  Image,
-  Card,
+ 
+
+
 } from "antd";
 import {
   EyeOutlined,
   EditOutlined,
   UserOutlined,
-  FileImageOutlined,
-  SafetyOutlined,
+
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthProvider";
