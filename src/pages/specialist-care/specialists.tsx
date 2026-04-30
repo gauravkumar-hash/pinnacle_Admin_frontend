@@ -58,6 +58,8 @@ export const SpecialistsScreen = () => {
   const [editing, setEditing] = useState<Specialist | null>(null);
   const [form] = Form.useForm();
   const [imageFile, setImageFile] = useState<UploadFile[]>([]);
+  const [clinicPhotoFile, setClinicPhotoFile] = useState<UploadFile[]>([]);
+  const [bannerImageFile, setBannerImageFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${msg}`);
@@ -85,6 +87,8 @@ export const SpecialistsScreen = () => {
       );
       formData.append("name", values.name || "");
       formData.append("appointment_email", values.appointment_email || "");
+      formData.append("clinic_name", values.clinic_name || "");
+      formData.append("consultation_fee", values.consultation_fee?.toString() || "");
 
       // Add optional fields
       formData.append("title", values.title || "");
@@ -94,7 +98,12 @@ export const SpecialistsScreen = () => {
       formData.append("languages", values.languages || "");
       formData.append("contact_email", values.contact_email || "");
       formData.append("contact_phone", values.contact_phone || "");
-      formData.append("insurance", values.insurance || "");
+      formData.append("years_of_practice", values.years_of_practice?.toString() || "");
+      formData.append("hospital_affiliations", values.hospital_affiliations || "");
+      formData.append("board_certifications", values.board_certifications || "");
+      formData.append("awards", values.awards || "");
+      formData.append("insurance_tpa", values.insurance_tpa || "");
+      formData.append("insurance_shield_plan", values.insurance_shield_plan || "");
 
       // Handle available_days
       const availableDays = Array.isArray(values.available_days)
@@ -111,9 +120,15 @@ export const SpecialistsScreen = () => {
       formData.append("display_order", values.display_order?.toString() || "0");
       formData.append("active", values.active ? "true" : "false");
 
-      // Add image file if selected
+      // Add image files if selected
       if (imageFile.length > 0 && imageFile[0].originFileObj) {
         formData.append("image", imageFile[0].originFileObj);
+      }
+      if (clinicPhotoFile.length > 0 && clinicPhotoFile[0].originFileObj) {
+        formData.append("clinic_photo", clinicPhotoFile[0].originFileObj);
+      }
+      if (bannerImageFile.length > 0 && bannerImageFile[0].originFileObj) {
+        formData.append("banner_image", bannerImageFile[0].originFileObj);
       }
 
       if (editing)
@@ -127,6 +142,8 @@ export const SpecialistsScreen = () => {
       form.resetFields();
       setEditing(null);
       setImageFile([]);
+      setClinicPhotoFile([]);
+      setBannerImageFile([]);
     },
   });
 
@@ -163,13 +180,27 @@ export const SpecialistsScreen = () => {
         : [],
     });
 
-    // Set existing image
+    // Set existing images
     if (record.image_url) {
       setImageFile([
         { uid: "-1", name: "image", status: "done", url: record.image_url },
       ]);
     } else {
       setImageFile([]);
+    }
+    if (record.clinic_photo_path) {
+      setClinicPhotoFile([
+        { uid: "-2", name: "clinic_photo", status: "done", url: record.clinic_photo_path },
+      ]);
+    } else {
+      setClinicPhotoFile([]);
+    }
+    if (record.banner_image_path) {
+      setBannerImageFile([
+        { uid: "-3", name: "banner_image", status: "done", url: record.banner_image_path },
+      ]);
+    } else {
+      setBannerImageFile([]);
     }
 
     setModalOpen(true);
@@ -179,6 +210,8 @@ export const SpecialistsScreen = () => {
     setEditing(null);
     form.resetFields();
     setImageFile([]);
+    setClinicPhotoFile([]);
+    setBannerImageFile([]);
     setModalOpen(true);
   };
 
@@ -271,10 +304,12 @@ export const SpecialistsScreen = () => {
             setEditing(null);
             form.resetFields();
             setImageFile([]);
+            setClinicPhotoFile([]);
+            setBannerImageFile([]);
           }}
           onOk={() => form.submit()}
           confirmLoading={saveMutation.isPending}
-          width={700}
+          width={800}
         >
           <Form
             form={form}
@@ -373,6 +408,102 @@ export const SpecialistsScreen = () => {
                 <Input placeholder="+65 6123 4567" />
               </Form.Item>
               <Form.Item
+                name="clinic_name"
+                label="Clinic Name"
+                rules={[{ required: true }]}
+              >
+                <Input placeholder="e.g. Pinnacle Clinic" />
+              </Form.Item>
+              <Form.Item
+                name="consultation_fee"
+                label="Consultation Fee (SGD)"
+                rules={[{ required: true, type: "number", min: 0 }]}
+              >
+                <InputNumber step={0.01} placeholder="e.g. 150.00" style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item
+                name="years_of_practice"
+                label="Years of Practice"
+              >
+                <InputNumber min={0} placeholder="e.g. 15" style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Clinic Photo" className="col-span-2">
+                <Upload
+                  listType="picture-card"
+                  fileList={clinicPhotoFile}
+                  maxCount={1}
+                  beforeUpload={() => false}
+                  onChange={({ fileList }) => setClinicPhotoFile(fileList)}
+                >
+                  {clinicPhotoFile.length === 0 && (
+                    <div>
+                      <UploadOutlined />
+                      <div style={{ marginTop: 8 }}>Upload Clinic Photo</div>
+                    </div>
+                  )}
+                </Upload>
+              </Form.Item>
+              <Form.Item label="Banner Image" className="col-span-2">
+                <Upload
+                  listType="picture-card"
+                  fileList={bannerImageFile}
+                  maxCount={1}
+                  beforeUpload={() => false}
+                  onChange={({ fileList }) => setBannerImageFile(fileList)}
+                >
+                  {bannerImageFile.length === 0 && (
+                    <div>
+                      <UploadOutlined />
+                      <div style={{ marginTop: 8 }}>Upload Banner Image</div>
+                    </div>
+                  )}
+                </Upload>
+              </Form.Item>
+              <Form.Item
+                name="hospital_affiliations"
+                label="Hospital Affiliations"
+                className="col-span-2"
+              >
+                <Input.TextArea
+                  rows={2}
+                  placeholder="e.g. Singapore General Hospital, NUH"
+                />
+              </Form.Item>
+              <Form.Item
+                name="board_certifications"
+                label="Board Certifications"
+                className="col-span-2"
+              >
+                <Input.TextArea
+                  rows={2}
+                  placeholder="e.g. Board Certified in Cardiology"
+                />
+              </Form.Item>
+              <Form.Item
+                name="awards"
+                label="Awards & Achievements"
+                className="col-span-2"
+              >
+                <Input.TextArea
+                  rows={2}
+                  placeholder="e.g. Best Doctor 2025, Healthcare Excellence Award"
+                />
+              </Form.Item>
+              <Form.Item
+                name="insurance_tpa"
+                label="Insurance (TPA) Providers"
+                className="col-span-2"
+              >
+                <Input placeholder="e.g. FastHealth, AXA, CHUA" />
+              </Form.Item>
+              <Form.Item
+                name="insurance_shield_plan"
+                label="Insurance (Shield Plan) Providers"
+                className="col-span-2"
+              >
+                <Input placeholder="e.g. Shield Plan A, Shield Plan B" />
+              </Form.Item>
+              <Form.Item
                 name="available_days"
                 label="Available Days"
                 className="col-span-2"
@@ -394,13 +525,6 @@ export const SpecialistsScreen = () => {
                   <Option value="morning">Morning</Option>
                   <Option value="afternoon">Afternoon</Option>
                 </Select>
-              </Form.Item>
-              <Form.Item
-                name="insurance"
-                label="Insurance Accepted"
-                className="col-span-2"
-              >
-                <Input placeholder="e.g. AIA, Prudential, NTUC Income" />
               </Form.Item>
               <Form.Item
                 name="display_order"

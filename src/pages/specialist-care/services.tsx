@@ -14,14 +14,14 @@ import {
   message,
   Popconfirm,
   Tag,
-  Avatar,
+
   Upload,
 } from "antd";
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  ShoppingOutlined,
+
   UploadOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";

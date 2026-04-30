@@ -1,5 +1,5 @@
 import { useAuth } from "../context/AuthProvider";
-import { TeamOutlined } from "@ant-design/icons";
+
 import {
   ConfigProvider,
   Layout,

@@ -257,9 +257,14 @@ export const updateRequestStatus = async (
     headers: getHeaders(session),
     body: JSON.stringify(body),
   });
+
+  if (!res.ok) {
+    onError(res.status, (await res.json())?.detail);
+    return;
+  }
+
   return res.json();
 };
-
 export const rescheduleRequest = async (
   session: Session,
   id: number,
