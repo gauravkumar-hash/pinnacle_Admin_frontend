@@ -59,6 +59,7 @@ export interface Specialist {
   insurance_tpa?: string;
   insurance_shield_plan?: string;
   available_days?: string;
+  available_time_slots?: string;
   display_order: number;
   active: boolean;
   created_at: string;

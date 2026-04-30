@@ -246,6 +246,12 @@ export const SpecialistsScreen = () => {
         v ? v.split(",").map((d) => <Tag key={d}>{d.slice(0, 3)}</Tag>) : "-",
     },
     {
+      title: "Time Slots",
+      dataIndex: "available_time_slots",
+      render: (v: string) =>
+        v ? v.split(",").map((slot) => <Tag key={slot}>{slot}</Tag>) : "-",
+    },
+    {
       title: "Active",
       dataIndex: "active",
       render: (v: boolean, record: Specialist) => (

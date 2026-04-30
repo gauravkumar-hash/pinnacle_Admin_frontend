@@ -40,6 +40,21 @@ const { Content } = Layout;
 const { Title } = Typography;
 const { Option } = Select;
 
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const TIME_SLOTS = [
+  "morning",
+  "afternoon",
+];
+
 export const ServicesScreen = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -85,6 +100,14 @@ export const ServicesScreen = () => {
       formData.append("awards", values.awards || "");
       formData.append("insurance_tpa", values.insurance_tpa || "");
       formData.append("insurance_shield_plan", values.insurance_shield_plan || "");
+      const availableDays = Array.isArray(values.available_days)
+        ? values.available_days.join(",")
+        : values.available_days || "";
+      const availableTimeSlots = Array.isArray(values.available_time_slots)
+        ? values.available_time_slots.join(",")
+        : values.available_time_slots || "";
+      formData.append("available_days", availableDays);
+      formData.append("available_time_slots", availableTimeSlots);
       formData.append("contact_name", values.contact_name || "");
       formData.append("contact_email", values.contact_email || "");
       formData.append("contact_phone", values.contact_phone || "");
@@ -136,7 +159,11 @@ export const ServicesScreen = () => {
 
   const openEdit = (record: Service) => {
     setEditing(record);
-    form.setFieldsValue(record);
+    form.setFieldsValue({
+      ...record,
+      available_days: record.available_days ? record.available_days.split(",") : [],
+      available_time_slots: record.available_time_slots ? record.available_time_slots.split(",") : [],
+    });
 
     // Set existing images
     if (record.clinic_photo_path) {
@@ -184,6 +211,18 @@ export const ServicesScreen = () => {
       title: "Consultation Fee",
       dataIndex: "consultation_fee",
       render: (v: number) => `$${v.toFixed(2)}`,
+    },
+    {
+      title: "Available Days",
+      dataIndex: "available_days",
+      render: (v: string) =>
+        v ? v.split(",").map((day) => <Tag key={day}>{day.slice(0, 3)}</Tag>) : "-",
+    },
+    {
+      title: "Time Slots",
+      dataIndex: "available_time_slots",
+      render: (v: string) =>
+        v ? v.split(",").map((slot) => <Tag key={slot}>{slot}</Tag>) : "-",
     },
     {
       title: "Active",
@@ -404,6 +443,32 @@ export const ServicesScreen = () => {
                 className="col-span-2"
               >
                 <Input placeholder="e.g. Shield Plan A, Shield Plan B" />
+              </Form.Item>
+              <Form.Item
+                name="available_days"
+                label="Available Days"
+                className="col-span-2"
+              >
+                <Select mode="multiple" placeholder="Select available days">
+                  {DAYS.map((day) => (
+                    <Option key={day} value={day}>
+                      {day}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="available_time_slots"
+                label="Available Time Slots"
+                className="col-span-2"
+              >
+                <Select mode="multiple" placeholder="Select time slots">
+                  {TIME_SLOTS.map((slot) => (
+                    <Option key={slot} value={slot}>
+                      {slot.charAt(0).toUpperCase() + slot.slice(1)}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
               <Form.Item
                 name="contact_name"

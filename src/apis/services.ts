@@ -40,6 +40,8 @@ export interface Service {
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
+  available_days?: string;
+  available_time_slots?: string;
   active: boolean;
   display_order?: number;
   created_at: string;

@@ -41,8 +41,24 @@ const { TextArea } = Input
 // Using types from generated API client
 type AppointmentServiceGroup = ServiceGroupDetails & {
   services: ServiceDetails[]
+  available_days?: string[]
+  available_time_slots?: string[]
 }
 
+const dayOptions = [
+  { label: 'Monday', value: 'Monday' },
+  { label: 'Tuesday', value: 'Tuesday' },
+  { label: 'Wednesday', value: 'Wednesday' },
+  { label: 'Thursday', value: 'Thursday' },
+  { label: 'Friday', value: 'Friday' },
+  { label: 'Saturday', value: 'Saturday' },
+  { label: 'Sunday', value: 'Sunday' }
+]
+
+const timeSlotOptions = [
+  { label: 'Morning', value: 'morning' },
+  { label: 'Afternoon', value: 'afternoon' }
+]
 
 const serviceTypeLabels = {
   'no_detail': 'No Detail Required',
@@ -277,6 +293,8 @@ export default function AppointmentServices() {
       duration: values.duration as number,
       type: values.type as AppointmentServiceGroupType,
       restricted_branches: (values.restricted_branches as string[]) || undefined,
+      available_days: (values.available_days as string[]) || undefined,
+      available_time_slots: (values.available_time_slots as string[]) || undefined,
       // Explicitly set to undefined if empty string or null to remove corporate code
       corporate_code_id: (values.corporate_code_id as string) || undefined
     }
@@ -388,13 +406,21 @@ export default function AppointmentServices() {
     {
       title: 'Restrictions',
       key: 'restrictions',
-      width: 100,
+      width: 140,
       render: (_, record) => (
-        (record.restricted_branches && record.restricted_branches.length > 0) ? (
-          <Tag color="orange">{record.restricted_branches.length} branches</Tag>
-        ) : (
-          <Tag color="default">All branches</Tag>
-        )
+        <Space direction="vertical">
+          {(record.restricted_branches && record.restricted_branches.length > 0) ? (
+            <Tag color="orange">{record.restricted_branches.length} branches</Tag>
+          ) : (
+            <Tag color="default">All branches</Tag>
+          )}
+          {record.available_days && record.available_days.length > 0 && (
+            <Tag color="geekblue">{record.available_days.join(', ')}</Tag>
+          )}
+          {record.available_time_slots && record.available_time_slots.length > 0 && (
+            <Tag color="green">{record.available_time_slots.map(slot => slot.charAt(0).toUpperCase() + slot.slice(1)).join(', ')}</Tag>
+          )}
+        </Space>
       )
     },
     {
@@ -631,6 +657,30 @@ export default function AppointmentServices() {
                 label: `${branch.name}${branch.hidden ? ' (Hidden)' : ''}`,
                 value: branch.id
               }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="available_days"
+            label="Available Days"
+            help="Only show this service group on selected weekdays"
+          >
+            <Select
+              mode="multiple"
+              placeholder="Select available days"
+              options={dayOptions}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="available_time_slots"
+            label="Available Time Slots"
+            help="Select allowed appointment times for this service group"
+          >
+            <Select
+              mode="multiple"
+              placeholder="Select time slots"
+              options={timeSlotOptions}
             />
           </Form.Item>
 
