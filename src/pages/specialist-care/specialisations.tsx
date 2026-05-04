@@ -262,7 +262,9 @@ export const SpecialisationsScreen = () => {
                 )}
               </Upload>
             </Form.Item>
-            <Form.Item label="Banner Image">
+
+            {/* Banner upload hidden from UI but logic preserved */}
+            <Form.Item label="Banner Image" style={{ display: "none" }}>
               <Upload
                 listType="picture-card"
                 fileList={bannerFile}
@@ -278,6 +280,7 @@ export const SpecialisationsScreen = () => {
                 )}
               </Upload>
             </Form.Item>
+
             <Form.Item
               name="display_order"
               label="Display Order"
