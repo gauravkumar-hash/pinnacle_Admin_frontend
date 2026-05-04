@@ -59,14 +59,13 @@ export const SpecialisationsScreen = () => {
     mutationFn: async (values: Partial<Specialisation>) => {
       const formData = new FormData();
 
-      // Add required fields
       formData.append("name", values.name || "");
       formData.append("slug", values.slug || "");
-
-      // Add optional fields
       formData.append("description", values.description || "");
       formData.append("display_order", values.display_order?.toString() || "0");
-      formData.append("active", values.active ? "true" : "false");
+
+      // FIX: explicitly check boolean — Ant Design Switch returns boolean
+      formData.append("active", values.active === true ? "true" : "false");
 
       if (iconFile.length > 0 && iconFile[0].originFileObj) {
         formData.append("icon", iconFile[0].originFileObj);
@@ -100,22 +99,36 @@ export const SpecialisationsScreen = () => {
     },
   });
 
-  const toggleActive = (record: Specialisation) => {
-    updateSpecialisation(
-      session!,
-      record.id,
-      { active: !record.active },
-      onError,
-    ).then(() => {
+  // FIX: was sending plain JSON object — backend only reads multipart/form-data
+  // Now sends FormData with all required fields so PATCH succeeds
+  const toggleActive = async (record: Specialisation) => {
+    const formData = new FormData();
+    formData.append("name", record.name);
+    formData.append("slug", record.slug);
+    formData.append("description", record.description || "");
+    formData.append("display_order", record.display_order?.toString() || "0");
+    formData.append("active", record.active ? "false" : "true"); // toggled
+
+    try {
+      await updateSpecialisation(session!, record.id, formData, onError);
       queryClient.invalidateQueries({ queryKey: ["specialisations"] });
-    });
+    } catch {
+      messageApi.error("Failed to update status");
+    }
   };
 
   const openEdit = (record: Specialisation) => {
     setEditing(record);
-    form.setFieldsValue(record);
 
-    // Set existing images
+    // FIX: explicitly set all fields including active so Switch renders correctly
+    form.setFieldsValue({
+      name: record.name,
+      slug: record.slug,
+      description: record.description,
+      display_order: record.display_order,
+      active: record.active,
+    });
+
     if (record.icon_url) {
       setIconFile([
         { uid: "-1", name: "icon", status: "done", url: record.icon_url },
