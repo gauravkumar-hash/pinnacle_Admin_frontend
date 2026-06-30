@@ -183,6 +183,11 @@ const Sidebar = () => {
             icon: <MedicineBoxOutlined />,
           },
           {
+            key: "/specialist-care/specialists",
+            label: "Doctors",
+            icon: <MedicineBoxOutlined />,
+          },
+          {
             key: "/specialist-care/requests",
             label: "Appointment Requests",
             icon: <CalendarOutlined />,
