@@ -29,6 +29,7 @@ export interface Specialisation {
   description?: string;
   icon_url?: string;
   banner_url?: string;
+  display_mode: "doctors" | "services";
   display_order: number;
   active: boolean;
   created_at: string;
