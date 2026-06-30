@@ -61,6 +61,7 @@ import BranchOperatingHours from "./pages/branches/operating-hours.tsx";
 import BranchAppointmentHours from "./pages/branches/appointment-hours.tsx";
 import HealthReportTable from "./components/HealthReportTable.tsx";
 import { SpecialisationsScreen } from "./pages/specialist-care/specialisations";
+import { SpecialistsScreen } from "./pages/specialist-care/specialists";
 
 import { ServicesScreen } from "./pages/specialist-care/services";
 import { AppointmentRequestsScreen } from "./pages/specialist-care/appointment-requests";
@@ -205,6 +206,7 @@ function AdminApp() {
         <Route path="/specialist-care" element={<ScreenLayout />}>
           <Route path="specialisations" element={<SpecialisationsScreen />} />
           <Route path="services" element={<ServicesScreen />} />
+          <Route path="specialists" element={<SpecialistsScreen />} />
           <Route path="requests" element={<AppointmentRequestsScreen />} />
           <Route path="email-template" element={<EmailTemplatesScreen />} />
         </Route>
