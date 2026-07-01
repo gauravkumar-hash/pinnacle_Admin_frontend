@@ -40,6 +40,7 @@ export interface Service {
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
+  cc_emails?: string[];
   available_days?: string;
   available_time_slots?: string;
   day_availability?: Record<string, string[]>;
