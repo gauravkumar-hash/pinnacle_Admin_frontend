@@ -11,6 +11,7 @@ import {
   Input,
   InputNumber,
   Select,
+  Checkbox,
   message,
   Popconfirm,
   Tag,
@@ -48,10 +49,56 @@ const DAYS = [
   "Sunday",
 ];
 
-const TIME_SLOTS = [
-  "morning",
-  "afternoon",
-];
+// Per-day AM/PM picker component
+const DayAvailabilityPicker = ({
+  value = {},
+  onChange,
+}: {
+  value?: Record<string, string[]>;
+  onChange?: (v: Record<string, string[]>) => void;
+}) => {
+  const toggle = (day: string, slot: string) => {
+    const current = value[day] ?? [];
+    const updated = current.includes(slot)
+      ? current.filter((s) => s !== slot)
+      : [...current, slot];
+    const next = { ...value };
+    if (updated.length === 0) delete next[day];
+    else next[day] = updated;
+    onChange?.(next);
+  };
+
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <thead>
+        <tr>
+          <th style={{ textAlign: "left", paddingBottom: 4 }}>Day</th>
+          <th style={{ textAlign: "center", paddingBottom: 4 }}>AM</th>
+          <th style={{ textAlign: "center", paddingBottom: 4 }}>PM</th>
+        </tr>
+      </thead>
+      <tbody>
+        {DAYS.map((day) => (
+          <tr key={day}>
+            <td style={{ padding: "4px 0" }}>{day}</td>
+            <td style={{ textAlign: "center" }}>
+              <Checkbox
+                checked={(value[day] ?? []).includes("AM")}
+                onChange={() => toggle(day, "AM")}
+              />
+            </td>
+            <td style={{ textAlign: "center" }}>
+              <Checkbox
+                checked={(value[day] ?? []).includes("PM")}
+                onChange={() => toggle(day, "PM")}
+              />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
 export const ServicesScreen = () => {
   const { session } = useAuth();
@@ -85,7 +132,7 @@ export const ServicesScreen = () => {
       formData.append("specialisation_id", values.specialisation_id?.toString() || "");
       formData.append("service_name", values.service_name || "");
       formData.append("clinic_name", values.clinic_name || "");
-      formData.append("consultation_fee", values.consultation_fee?.toString() || "");
+      formData.append("consultation_fee", values.consultation_fee || "");
 
       // Add optional fields
       formData.append("bio", values.bio || "");
@@ -105,6 +152,9 @@ export const ServicesScreen = () => {
         : values.available_time_slots || "";
       formData.append("available_days", availableDays);
       formData.append("available_time_slots", availableTimeSlots);
+      if (values.day_availability && Object.keys(values.day_availability).length > 0) {
+        formData.append("day_availability", JSON.stringify(values.day_availability));
+      }
       formData.append("contact_name", values.contact_name || "");
       formData.append("contact_email", values.contact_email || "");
       formData.append("contact_phone", values.contact_phone || "");
@@ -156,6 +206,7 @@ export const ServicesScreen = () => {
       ...record,
       available_days: record.available_days ? record.available_days.split(",") : [],
       available_time_slots: record.available_time_slots ? record.available_time_slots.split(",") : [],
+      day_availability: record.day_availability ?? {},
     });
 
     // Set existing images
@@ -195,19 +246,17 @@ export const ServicesScreen = () => {
     {
       title: "Consultation Fee",
       dataIndex: "consultation_fee",
-      render: (v: number) => `$${v.toFixed(2)}`,
+      render: (v: string) => v || "-",
     },
     {
-      title: "Available Days",
-      dataIndex: "available_days",
-      render: (v: string) =>
-        v ? v.split(",").map((day) => <Tag key={day}>{day.slice(0, 3)}</Tag>) : "-",
-    },
-    {
-      title: "Time Slots",
-      dataIndex: "available_time_slots",
-      render: (v: string) =>
-        v ? v.split(",").map((slot) => <Tag key={slot}>{slot}</Tag>) : "-",
+      title: "Availability",
+      dataIndex: "day_availability",
+      render: (v: Record<string, string[]>) =>
+        v && Object.keys(v).length > 0
+          ? Object.entries(v).map(([day, slots]) => (
+              <Tag key={day}>{day.slice(0, 3)}: {slots.join("/")}</Tag>
+            ))
+          : "-",
     },
     {
       title: "Active",
@@ -315,10 +364,9 @@ export const ServicesScreen = () => {
               </Form.Item>
               <Form.Item
                 name="consultation_fee"
-                label="Consultation Fee ($)"
-                rules={[{ required: true, type: "number", min: 0 }]}
+                label="Consultation Fee"
               >
-                <InputNumber step={0.01} placeholder="e.g. 100.00" style={{ width: "100%" }} />
+                <Input placeholder="e.g. $80 - $120 or From $50" />
               </Form.Item>
               <Form.Item
                 name="years_of_practice"
@@ -414,30 +462,12 @@ export const ServicesScreen = () => {
                 <Input placeholder="e.g. Shield Plan A, Shield Plan B" />
               </Form.Item>
               <Form.Item
-                name="available_days"
-                label="Available Days"
+                label="Availability (per day)"
                 className="col-span-2"
               >
-                <Select mode="multiple" placeholder="Select available days">
-                  {DAYS.map((day) => (
-                    <Option key={day} value={day}>
-                      {day}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="available_time_slots"
-                label="Available Time Slots"
-                className="col-span-2"
-              >
-                <Select mode="multiple" placeholder="Select time slots">
-                  {TIME_SLOTS.map((slot) => (
-                    <Option key={slot} value={slot}>
-                      {slot.charAt(0).toUpperCase() + slot.slice(1)}
-                    </Option>
-                  ))}
-                </Select>
+                <Form.Item name="day_availability" noStyle initialValue={{}}>
+                  <DayAvailabilityPicker />
+                </Form.Item>
               </Form.Item>
               <Form.Item
                 name="contact_name"
