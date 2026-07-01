@@ -24,6 +24,7 @@ import {
   DeleteOutlined,
   UserOutlined,
   UploadOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -101,6 +102,33 @@ const DayAvailabilityPicker = ({
   );
 };
 
+// ── Reusable CC emails input ──────────────────────────────────────────────────
+const CCEmailsInput = ({ value = [], onChange }: { value?: string[]; onChange?: (v: string[]) => void }) => {
+  const [input, setInput] = useState("");
+  const add = () => {
+    const trimmed = input.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
+    if (value.includes(trimmed)) { setInput(""); return; }
+    onChange?.([...value, trimmed]);
+    setInput("");
+  };
+  return (
+    <div>
+      <Space wrap style={{ marginBottom: 8 }}>
+        {value.map((email) => (
+          <Tag key={email} closable icon={<MailOutlined />} color="blue" onClose={() => onChange?.(value.filter((e) => e !== email))}>
+            {email}
+          </Tag>
+        ))}
+      </Space>
+      <Space.Compact style={{ width: "100%", maxWidth: 380 }}>
+        <Input placeholder="Add CC email" value={input} onChange={(e) => setInput(e.target.value)} onPressEnter={add} />
+        <Button icon={<PlusOutlined />} onClick={add}>Add</Button>
+      </Space.Compact>
+    </div>
+  );
+};
+
 export const SpecialistsScreen = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -153,6 +181,9 @@ export const SpecialistsScreen = () => {
       formData.append("awards", values.awards || "");
       formData.append("insurance_tpa", values.insurance_tpa || "");
       formData.append("insurance_shield_plan", values.insurance_shield_plan || "");
+      if (values.cc_emails?.length) {
+        formData.append("cc_emails", JSON.stringify(values.cc_emails));
+      }
 
       // Handle available_days
       const availableDays = Array.isArray(values.available_days)
@@ -521,6 +552,15 @@ export const SpecialistsScreen = () => {
                 className="col-span-2"
               >
                 <Input placeholder="e.g. Shield Plan A, Shield Plan B" />
+              </Form.Item>
+              <Form.Item
+                name="cc_emails"
+                label="CC Emails (booking notifications)"
+                className="col-span-2"
+                initialValue={[]}
+                help="These addresses are CC'd on every booking notification for this specialist"
+              >
+                <CCEmailsInput />
               </Form.Item>
               <Form.Item
                 label="Availability (per day)"
