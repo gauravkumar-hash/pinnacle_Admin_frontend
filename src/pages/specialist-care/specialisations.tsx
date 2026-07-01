@@ -15,6 +15,7 @@ import {
   Tag,
   Upload,
   Image,
+  Radio,
 } from "antd";
 import {
   PlusOutlined,
@@ -63,7 +64,7 @@ export const SpecialisationsScreen = () => {
       formData.append("slug", values.slug || "");
       formData.append("description", values.description || "");
       formData.append("display_order", values.display_order?.toString() || "0");
-
+      formData.append("display_mode", values.display_mode || "doctors");
       // FIX: explicitly check boolean — Ant Design Switch returns boolean
       formData.append("active", values.active === true ? "true" : "false");
 
@@ -107,6 +108,7 @@ export const SpecialisationsScreen = () => {
     formData.append("slug", record.slug);
     formData.append("description", record.description || "");
     formData.append("display_order", record.display_order?.toString() || "0");
+    formData.append("display_mode", record.display_mode || "doctors");
     formData.append("active", record.active ? "false" : "true"); // toggled
 
     try {
@@ -126,6 +128,7 @@ export const SpecialisationsScreen = () => {
       slug: record.slug,
       description: record.description,
       display_order: record.display_order,
+      display_mode: record.display_mode || "doctors",
       active: record.active,
     });
 
@@ -180,6 +183,15 @@ export const SpecialisationsScreen = () => {
     },
     { title: "Slug", dataIndex: "slug", render: (v: string) => <Tag>{v}</Tag> },
     { title: "Description", dataIndex: "description", ellipsis: true },
+    {
+      title: "Display Mode",
+      dataIndex: "display_mode",
+      render: (v: string) => (
+        <Tag color={v === "services" ? "blue" : "green"}>
+          {v === "services" ? "Services" : "Doctors"}
+        </Tag>
+      ),
+    },
     {
       title: "Active",
       dataIndex: "active",
@@ -258,6 +270,17 @@ export const SpecialisationsScreen = () => {
             </Form.Item>
             <Form.Item name="description" label="Description">
               <Input.TextArea rows={3} />
+            </Form.Item>
+            <Form.Item
+              name="display_mode"
+              label="Display Mode"
+              initialValue="doctors"
+              rules={[{ required: true }]}
+            >
+              <Radio.Group>
+                <Radio value="doctors">Doctors / Specialists</Radio>
+                <Radio value="services">Services</Radio>
+              </Radio.Group>
             </Form.Item>
             <Form.Item label="Icon Image">
               <Upload
