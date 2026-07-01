@@ -25,7 +25,7 @@ export interface Service {
   specialisation_id: number;
   service_name: string;
   clinic_name: string;
-  consultation_fee: number;
+  consultation_fee?: string;
   clinic_photo_path?: string;
   banner_image_path?: string;
   bio?: string;
@@ -42,6 +42,7 @@ export interface Service {
   contact_phone?: string;
   available_days?: string;
   available_time_slots?: string;
+  day_availability?: Record<string, string[]>;
   active: boolean;
   display_order?: number;
   created_at: string;
