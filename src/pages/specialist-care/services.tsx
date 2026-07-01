@@ -22,6 +22,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -100,6 +101,32 @@ const DayAvailabilityPicker = ({
   );
 };
 
+const CCEmailsInput = ({ value = [], onChange }: { value?: string[]; onChange?: (v: string[]) => void }) => {
+  const [input, setInput] = useState("");
+  const add = () => {
+    const trimmed = input.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
+    if (value.includes(trimmed)) { setInput(""); return; }
+    onChange?.([...value, trimmed]);
+    setInput("");
+  };
+  return (
+    <div>
+      <Space wrap style={{ marginBottom: 8 }}>
+        {value.map((email) => (
+          <Tag key={email} closable icon={<MailOutlined />} color="blue" onClose={() => onChange?.(value.filter((e) => e !== email))}>
+            {email}
+          </Tag>
+        ))}
+      </Space>
+      <Space.Compact style={{ width: "100%", maxWidth: 380 }}>
+        <Input placeholder="Add CC email" value={input} onChange={(e) => setInput(e.target.value)} onPressEnter={add} />
+        <Button icon={<PlusOutlined />} onClick={add}>Add</Button>
+      </Space.Compact>
+    </div>
+  );
+};
+
 export const ServicesScreen = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -158,6 +185,9 @@ export const ServicesScreen = () => {
       formData.append("contact_name", values.contact_name || "");
       formData.append("contact_email", values.contact_email || "");
       formData.append("contact_phone", values.contact_phone || "");
+      if (values.cc_emails?.length) {
+        formData.append("cc_emails", JSON.stringify(values.cc_emails));
+      }
       formData.append("display_order", values.display_order?.toString() || "0");
 
       formData.append("active", values.active ? "true" : "false");
@@ -183,7 +213,8 @@ export const ServicesScreen = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteService(session!, id, onError),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (!result) return; // onError already displayed the error message
       queryClient.invalidateQueries({ queryKey: ["services"] });
       messageApi.success("Service deleted");
     },
@@ -487,6 +518,14 @@ export const ServicesScreen = () => {
                 label="Contact Phone"
               >
                 <Input placeholder="+65 6123 4567" />
+              </Form.Item>
+              <Form.Item
+                name="cc_emails"
+                label="CC Emails (booking notifications)"
+                initialValue={[]}
+                help="These addresses are CC'd on every booking notification for this service"
+              >
+                <CCEmailsInput />
               </Form.Item>
               <Form.Item
                 name="active"
