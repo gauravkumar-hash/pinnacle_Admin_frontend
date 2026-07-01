@@ -13,21 +13,18 @@ import {
   message,
   Descriptions,
   Avatar,
- 
-
-
 } from "antd";
 import {
   EyeOutlined,
   EditOutlined,
   UserOutlined,
-
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthProvider";
 import {
   getAppointmentRequests,
   updateRequestStatus,
+  getAppointmentBookingType,
   AppointmentRequest,
 } from "../../apis/specialist-care";
 import dayjs from "dayjs";
@@ -107,11 +104,13 @@ export const AppointmentRequestsScreen = () => {
     },
     {
       title: "Requested for",
-      render: (_: any, r: any) => {
+      render: (_: any, r: AppointmentRequest) => {
+        const bookingType = getAppointmentBookingType(r);
         if (r.specialist) {
           return (
             <Space>
               <Avatar src={r.specialist.image_url} icon={<UserOutlined />} size="small" />
+              <Tag color="purple">Doctor</Tag>
               <span>{r.specialist.title} {r.specialist.name}</span>
             </Space>
           );
@@ -120,10 +119,13 @@ export const AppointmentRequestsScreen = () => {
           return (
             <Space>
               <Avatar icon={<EditOutlined />} size="small" />
+              <Tag color="geekblue">Service</Tag>
               <span>{r.service.service_name}</span>
             </Space>
           );
         }
+        if (bookingType === "doctor") return <Tag color="purple">Doctor</Tag>;
+        if (bookingType === "service") return <Tag color="geekblue">Service</Tag>;
         return "-";
       },
     },
@@ -135,10 +137,10 @@ export const AppointmentRequestsScreen = () => {
         return (
           <div>
             <div style={{ fontWeight: 600 }}>
-              {isActualDate ? dayjs(r.date).format("DD MMM YYYY") : (r.date || "Flexible")}
+              {isActualDate ? dayjs(r.date).format("DD MMM YYYY") : (r.date || r.preferred_days || "Flexible")}
             </div>
             <div className="text-xs text-gray-400">
-              {r.time_slot || "Anytime"}
+              {r.time_slot || r.preferred_time || "Anytime"}
             </div>
           </div>
         );
@@ -235,22 +237,48 @@ export const AppointmentRequestsScreen = () => {
         >
           {viewRecord && (
             <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Booking Type">
+                {getAppointmentBookingType(viewRecord) === "doctor" && <Tag color="purple">Doctor Appointment</Tag>}
+                {getAppointmentBookingType(viewRecord) === "service" && <Tag color="geekblue">Service Booking</Tag>}
+                {getAppointmentBookingType(viewRecord) === "unknown" && "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Requested For">
+                {viewRecord.specialist && (
+                  <Space>
+                    <Avatar src={viewRecord.specialist.image_url} icon={<UserOutlined />} size="small" />
+                    <span>{viewRecord.specialist.title} {viewRecord.specialist.name}</span>
+                  </Space>
+                )}
+                {viewRecord.service && (
+                  <span>{viewRecord.service.service_name}</span>
+                )}
+                {!viewRecord.specialist && !viewRecord.service && "-"}
+              </Descriptions.Item>
               <Descriptions.Item label="Patient Name">{viewRecord.patient_name}</Descriptions.Item>
               <Descriptions.Item label="Contact">{viewRecord.contact_number}</Descriptions.Item>
               <Descriptions.Item label="Email">{viewRecord.email}</Descriptions.Item>
+              <Descriptions.Item label="Patient DOB">
+                {viewRecord.patient_dob ? dayjs(viewRecord.patient_dob).format("DD MMM YYYY") : "-"}
+              </Descriptions.Item>
               <Descriptions.Item label="Preferred Date">
-                {/\d{4}-\d{2}-\d{2}/.test((viewRecord as any).date) 
-                  ? dayjs((viewRecord as any).date).format("dddd, DD MMMM YYYY") 
-                  : (viewRecord as any).date}
+                {viewRecord.date && /\d{4}-\d{2}-\d{2}/.test(viewRecord.date) 
+                  ? dayjs(viewRecord.date).format("dddd, DD MMMM YYYY") 
+                  : (viewRecord.date || viewRecord.preferred_days || "Flexible")}
               </Descriptions.Item>
               <Descriptions.Item label="Preferred Time Slot">
-                <Tag color="processing">{(viewRecord as any).time_slot}</Tag>
+                <Tag color="processing">{viewRecord.time_slot || viewRecord.preferred_time || "Anytime"}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Reason">
+                {viewRecord.reason || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Additional Info">
+                {viewRecord.additional_info || "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Status">
                 <Tag color={STATUS_COLOR[viewRecord.status]}>{viewRecord.status.toUpperCase()}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Message From Admin">
-                {viewRecord.status_message || "—"}
+                {viewRecord.status_message || "-"}
               </Descriptions.Item>
             </Descriptions>
           )}
