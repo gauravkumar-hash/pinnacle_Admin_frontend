@@ -59,6 +59,7 @@ export interface Specialist {
   contact_phone?: string;
   insurance_tpa?: string;
   insurance_shield_plan?: string;
+  cc_emails?: string[];
   available_days?: string;
   available_time_slots?: string;
   day_availability?: Record<string, string[]>;
