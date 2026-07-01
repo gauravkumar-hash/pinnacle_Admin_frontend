@@ -43,7 +43,7 @@ export interface Specialist {
   name: string;
   image_url?: string;
   clinic_name?: string;
-  consultation_fee?: number;
+  consultation_fee?: string;
   clinic_photo_path?: string;
   banner_image_path?: string;
   credentials?: string;
@@ -61,6 +61,7 @@ export interface Specialist {
   insurance_shield_plan?: string;
   available_days?: string;
   available_time_slots?: string;
+  day_availability?: Record<string, string[]>;
   display_order: number;
   active: boolean;
   created_at: string;
@@ -70,15 +71,19 @@ export interface Specialist {
 export interface AppointmentRequest {
   id: number;
   specialisation_id: number;
-  specialist_id?: number;
-  service_id?: number;
+  specialist_id?: number | null;
+  service_id?: number | null;
+  booking_type?: "doctor" | "service" | "unknown";
   patient_name: string;
   patient_dob?: string;
   contact_number: string;
   email: string;
+  date?: string;
+  time_slot?: string;
   preferred_days?: string;
   preferred_time?: string;
   reason?: string;
+  additional_info?: string;
   status: "requested" | "confirmed" | "rejected" | "completed" | "rescheduled" | "cancelled";
   status_message?: string;
   submitted_at: string;
@@ -86,6 +91,15 @@ export interface AppointmentRequest {
   specialist?: { id: number; name: string; title?: string; image_url?: string };
   service?: { id: number; service_name: string; clinic_name: string };
 }
+
+export const getAppointmentBookingType = (
+  request: Pick<AppointmentRequest, "booking_type" | "specialist_id" | "service_id" | "specialist" | "service">,
+): "doctor" | "service" | "unknown" => {
+  if (request.booking_type) return request.booking_type;
+  if (request.specialist_id || request.specialist) return "doctor";
+  if (request.service_id || request.service) return "service";
+  return "unknown";
+};
 
 // ── Specialisations ────────────────────────────────────────────────────────────
 
