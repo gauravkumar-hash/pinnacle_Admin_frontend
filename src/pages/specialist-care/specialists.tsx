@@ -11,6 +11,7 @@ import {
   Input,
   InputNumber,
   Select,
+  Checkbox,
   message,
   Popconfirm,
   Tag,
@@ -50,6 +51,56 @@ const DAYS = [
   "Sunday",
 ];
 
+const DayAvailabilityPicker = ({
+  value = {},
+  onChange,
+}: {
+  value?: Record<string, string[]>;
+  onChange?: (v: Record<string, string[]>) => void;
+}) => {
+  const toggle = (day: string, slot: string) => {
+    const current = value[day] ?? [];
+    const updated = current.includes(slot)
+      ? current.filter((s) => s !== slot)
+      : [...current, slot];
+    const next = { ...value };
+    if (updated.length === 0) delete next[day];
+    else next[day] = updated;
+    onChange?.(next);
+  };
+
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <thead>
+        <tr>
+          <th style={{ textAlign: "left", paddingBottom: 4 }}>Day</th>
+          <th style={{ textAlign: "center", paddingBottom: 4 }}>AM</th>
+          <th style={{ textAlign: "center", paddingBottom: 4 }}>PM</th>
+        </tr>
+      </thead>
+      <tbody>
+        {DAYS.map((day) => (
+          <tr key={day}>
+            <td style={{ padding: "4px 0" }}>{day}</td>
+            <td style={{ textAlign: "center" }}>
+              <Checkbox
+                checked={(value[day] ?? []).includes("AM")}
+                onChange={() => toggle(day, "AM")}
+              />
+            </td>
+            <td style={{ textAlign: "center" }}>
+              <Checkbox
+                checked={(value[day] ?? []).includes("PM")}
+                onChange={() => toggle(day, "PM")}
+              />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
 export const SpecialistsScreen = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -87,7 +138,7 @@ export const SpecialistsScreen = () => {
       formData.append("name", values.name || "");
       formData.append("appointment_email", values.appointment_email || "");
       formData.append("clinic_name", values.clinic_name || "");
-      formData.append("consultation_fee", values.consultation_fee?.toString() || "");
+      formData.append("consultation_fee", values.consultation_fee || "");
 
       // Add optional fields
       formData.append("title", values.title || "");
@@ -114,6 +165,9 @@ export const SpecialistsScreen = () => {
         ? values.available_time_slots.join(",")
         : values.available_time_slots || "";
       formData.append("available_time_slots", availableTimeSlots);
+      if (values.day_availability && Object.keys(values.day_availability).length > 0) {
+        formData.append("day_availability", JSON.stringify(values.day_availability));
+      }
 
       formData.append("display_order", values.display_order?.toString() || "0");
       formData.append("active", values.active ? "true" : "false");
@@ -164,14 +218,12 @@ export const SpecialistsScreen = () => {
     setEditing(record);
     form.setFieldsValue({
       ...record,
-      // Map backend ID back to form field name
       category_id: record.specialisation_id,
-      available_days: record.available_days
-        ? record.available_days.split(",")
-        : [],
+      available_days: record.available_days ? record.available_days.split(",") : [],
       available_time_slots: (record as any).available_time_slots
         ? (record as any).available_time_slots.split(",")
         : [],
+      day_availability: record.day_availability ?? {},
     });
 
     // Set existing images
@@ -226,16 +278,14 @@ export const SpecialistsScreen = () => {
     },
     { title: "Appointment Email", dataIndex: "appointment_email" },
     {
-      title: "Available Days",
-      dataIndex: "available_days",
-      render: (v: string) =>
-        v ? v.split(",").map((d) => <Tag key={d}>{d.slice(0, 3)}</Tag>) : "-",
-    },
-    {
-      title: "Time Slots",
-      dataIndex: "available_time_slots",
-      render: (v: string) =>
-        v ? v.split(",").map((slot) => <Tag key={slot}>{slot}</Tag>) : "-",
+      title: "Availability",
+      dataIndex: "day_availability",
+      render: (v: Record<string, string[]>) =>
+        v && Object.keys(v).length > 0
+          ? Object.entries(v).map(([day, slots]) => (
+              <Tag key={day}>{day.slice(0, 3)}: {slots.join("/")}</Tag>
+            ))
+          : "-",
     },
     {
       title: "Active",
@@ -401,10 +451,9 @@ export const SpecialistsScreen = () => {
               </Form.Item>
               <Form.Item
                 name="consultation_fee"
-                label="Consultation Fee ($)"
-                rules={[{ required: true, type: "number", min: 0 }]}
+                label="Consultation Fee"
               >
-                <InputNumber step={0.01} placeholder="e.g. 150.00" style={{ width: "100%" }} />
+                <Input placeholder="e.g. $80 - $150 or From $100" />
               </Form.Item>
               <Form.Item
                 name="years_of_practice"
@@ -474,27 +523,12 @@ export const SpecialistsScreen = () => {
                 <Input placeholder="e.g. Shield Plan A, Shield Plan B" />
               </Form.Item>
               <Form.Item
-                name="available_days"
-                label="Available Days"
+                label="Availability (per day)"
                 className="col-span-2"
               >
-                <Select mode="multiple" placeholder="Select available days">
-                  {DAYS.map((d) => (
-                    <Option key={d} value={d}>
-                      {d}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="available_time_slots"
-                label="Available Time Slots"
-                className="col-span-2"
-              >
-                <Select mode="multiple" placeholder="Select time slots">
-                  <Option value="morning">Morning</Option>
-                  <Option value="afternoon">Afternoon</Option>
-                </Select>
+                <Form.Item name="day_availability" noStyle initialValue={{}}>
+                  <DayAvailabilityPicker />
+                </Form.Item>
               </Form.Item>
               <Form.Item
                 name="display_order"
