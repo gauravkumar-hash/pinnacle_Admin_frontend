@@ -19,13 +19,31 @@ const { TextArea } = Input;
 
 const PLACEHOLDERS: Record<string, string[]> = {
     specialist_notification: [
-        '{{clinic_name}}', '{{patient_name}}', '{{patient_dob}}',
-        '{{contact_number}}', '{{email}}', '{{preferred_days}}',
-        '{{preferred_time}}', '{{reason}}',
+        '{{doctor_name}}', '{{specialisation}}', '{{clinic_name}}',
+        '{{patient_name}}', '{{patient_dob}}', '{{contact_number}}',
+        '{{email}}', '{{date}}', '{{time_slot}}',
+        '{{preferred_days}}', '{{preferred_time}}', '{{reason}}',
     ],
     patient_confirmation: [
-        '{{clinic_name}}', '{{patient_name}}', '{{specialist_title}}',
-        '{{specialist_name}}', '{{contact_number}}',
+        '{{doctor_name}}', '{{specialisation}}', '{{clinic_name}}',
+        '{{patient_name}}', '{{contact_number}}', '{{contact_email}}',
+        '{{date}}', '{{time_slot}}',
+    ],
+    appointment_rescheduled: [
+        '{{doctor_name}}', '{{specialisation}}', '{{clinic_name}}',
+        '{{patient_name}}', '{{contact_number}}', '{{contact_email}}',
+        '{{date}}', '{{time_slot}}', '{{preferred_days}}', '{{preferred_time}}',
+    ],
+    appointment_cancelled: [
+        '{{doctor_name}}', '{{clinic_name}}', '{{patient_name}}',
+        '{{contact_number}}', '{{reason}}',
+    ],
+    specialist_reschedule_notification: [
+        '{{doctor_name}}', '{{patient_name}}', '{{contact_number}}',
+        '{{email}}', '{{date}}', '{{time_slot}}', '{{request_reason}}',
+    ],
+    specialist_cancel_notification: [
+        '{{patient_name}}', '{{contact_number}}', '{{email}}', '{{reason}}',
     ],
 };
 
