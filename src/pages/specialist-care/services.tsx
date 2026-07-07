@@ -27,6 +27,7 @@ import {
 import type { UploadFile } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthProvider";
+import { formatApiDetail } from "../../apis";
 import { getSpecialisations } from "../../apis/specialist-care";
 import {
   getServices,
@@ -138,7 +139,7 @@ export const ServicesScreen = () => {
   const [clinicPhotoFile, setClinicPhotoFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
-    messageApi.error(`Error ${status}: ${msg}`);
+    messageApi.error(`Error ${status}: ${formatApiDetail(msg)}`);
 
   const { data: services = [], isLoading } = useQuery({
     queryKey: ["services"],
@@ -166,7 +167,10 @@ export const ServicesScreen = () => {
       formData.append("bio", values.bio || "");
       formData.append("service_details", values.service_details || "");
       formData.append("languages", values.languages || "");
-      formData.append("years_of_practice", values.years_of_practice?.toString() || "");
+      // Backend expects an int; sending "" triggers a 422, so skip when empty
+      if (values.years_of_practice !== undefined && values.years_of_practice !== null) {
+        formData.append("years_of_practice", values.years_of_practice.toString());
+      }
       formData.append("hospital_affiliations", values.hospital_affiliations || "");
       formData.append("board_certifications", values.board_certifications || "");
       formData.append("awards", values.awards || "");
@@ -363,13 +367,17 @@ export const ServicesScreen = () => {
           <Form
             form={form}
             layout="vertical"
+            scrollToFirstError
             onFinish={(v) => saveMutation.mutate(v)}
+            onFinishFailed={() =>
+              messageApi.error("Please fill in all required fields highlighted below")
+            }
           >
             <div className="grid grid-cols-2 gap-x-4">
               <Form.Item
                 name="specialisation_id"
                 label="Specialisation"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please select a specialisation" }]}
               >
                 <Select placeholder="Select specialisation">
                   {specialisations.map((s) => (
@@ -382,14 +390,26 @@ export const ServicesScreen = () => {
               <Form.Item
                 name="service_name"
                 label="Service Name"
-                rules={[{ required: true }]}
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message: "Please enter the service name",
+                  },
+                ]}
               >
                 <Input placeholder="e.g. Scaling and Polishing" />
               </Form.Item>
               <Form.Item
                 name="clinic_name"
                 label="Clinic Name"
-                rules={[{ required: true }]}
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message: "Please enter the clinic name",
+                  },
+                ]}
                 className="col-span-2"
               >
                 <Input placeholder="e.g. Teeth Org" />
@@ -510,7 +530,7 @@ export const ServicesScreen = () => {
               <Form.Item
                 name="contact_email"
                 label="Contact Email"
-                rules={[{ type: "email" }]}
+                rules={[{ type: "email", message: "Please enter a valid email address" }]}
               >
                 <Input placeholder="contact@clinic.com" />
               </Form.Item>
