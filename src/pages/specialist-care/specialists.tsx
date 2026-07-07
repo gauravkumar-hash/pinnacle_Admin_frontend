@@ -138,7 +138,6 @@ export const SpecialistsScreen = () => {
   const [editing, setEditing] = useState<Specialist | null>(null);
   const [form] = Form.useForm();
   const [imageFile, setImageFile] = useState<UploadFile[]>([]);
-  const [clinicPhotoFile, setClinicPhotoFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${msg}`);
@@ -208,9 +207,6 @@ export const SpecialistsScreen = () => {
       if (imageFile.length > 0 && imageFile[0].originFileObj) {
         formData.append("image", imageFile[0].originFileObj);
       }
-      if (clinicPhotoFile.length > 0 && clinicPhotoFile[0].originFileObj) {
-        formData.append("clinic_photo", clinicPhotoFile[0].originFileObj);
-      }
 
       if (editing)
         return updateSpecialist(session!, editing.id, formData, onError);
@@ -223,7 +219,6 @@ export const SpecialistsScreen = () => {
       form.resetFields();
       setEditing(null);
       setImageFile([]);
-      setClinicPhotoFile([]);
     },
   });
 
@@ -266,13 +261,6 @@ export const SpecialistsScreen = () => {
     } else {
       setImageFile([]);
     }
-    if (record.clinic_photo_path) {
-      setClinicPhotoFile([
-        { uid: "-2", name: "clinic_photo", status: "done", url: record.clinic_photo_path },
-      ]);
-    } else {
-      setClinicPhotoFile([]);
-    }
 
     setModalOpen(true);
   };
@@ -281,7 +269,6 @@ export const SpecialistsScreen = () => {
     setEditing(null);
     form.resetFields();
     setImageFile([]);
-    setClinicPhotoFile([]);
     setModalOpen(true);
   };
 
@@ -378,7 +365,6 @@ export const SpecialistsScreen = () => {
             setEditing(null);
             form.resetFields();
             setImageFile([]);
-            setClinicPhotoFile([]);
           }}
           onOk={() => form.submit()}
           confirmLoading={saveMutation.isPending}
@@ -493,23 +479,6 @@ export const SpecialistsScreen = () => {
               >
                 <InputNumber min={0} placeholder="e.g. 15" style={{ width: "100%" }} />
               </Form.Item>
-              <Form.Item label="Clinic Photo" className="col-span-2">
-                <Upload
-                  listType="picture-card"
-                  fileList={clinicPhotoFile}
-                  maxCount={1}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setClinicPhotoFile(fileList)}
-                >
-                  {clinicPhotoFile.length === 0 && (
-                    <div>
-                      <UploadOutlined />
-                      <div style={{ marginTop: 8 }}>Upload Clinic Photo</div>
-                    </div>
-                  )}
-                </Upload>
-              </Form.Item>
-
               <Form.Item
                 name="hospital_affiliations"
                 label="Hospital Affiliations"
