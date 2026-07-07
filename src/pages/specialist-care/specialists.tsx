@@ -463,8 +463,11 @@ export const SpecialistsScreen = () => {
               </Form.Item>
               <Form.Item
                 name="appointment_email"
-                label="Email (optional)"
-                rules={[{ type: "email", message: "Please enter a valid email address" }]}
+                label="Appointment Email"
+                rules={[
+                  { required: true, message: "Please enter the appointment email" },
+                  { type: "email", message: "Please enter a valid email address" },
+                ]}
               >
                 <Input placeholder="dr.name@clinic.com" />
               </Form.Item>
