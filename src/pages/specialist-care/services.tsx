@@ -15,6 +15,7 @@ import {
   message,
   Popconfirm,
   Tag,
+  Avatar,
   Upload,
 } from "antd";
 import {
@@ -23,6 +24,7 @@ import {
   DeleteOutlined,
   UploadOutlined,
   MailOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -271,7 +273,12 @@ export const ServicesScreen = () => {
     {
       title: "Service Name",
       dataIndex: "service_name",
-      render: (v: string) => <strong>{v}</strong>,
+      render: (v: string, r: Service) => (
+        <Space>
+          <Avatar shape="square" size={40} src={r.clinic_photo_path} icon={<PictureOutlined />} />
+          <strong>{v}</strong>
+        </Space>
+      ),
     },
     {
       title: "Specialisation",
