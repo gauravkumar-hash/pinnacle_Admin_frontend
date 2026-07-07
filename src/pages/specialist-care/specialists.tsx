@@ -490,6 +490,13 @@ export const SpecialistsScreen = () => {
               <Form.Item
                 name="consultation_fee"
                 label="Consultation Fee"
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message: "Please enter the consultation fee",
+                  },
+                ]}
               >
                 <Input placeholder="e.g. $80 - $150 or From $100" />
               </Form.Item>
