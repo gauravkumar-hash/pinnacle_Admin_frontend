@@ -10,6 +10,24 @@ export const getHeaders = (session: Session) => {
 
 export type onErrorCallback = (status: number, msg: string) => void
 
+// FastAPI error `detail` can be a string or a list of {loc, msg} objects
+// (422 validation errors). Flatten it into a readable message.
+export const formatApiDetail = (detail: unknown): string => {
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+        return detail
+            .map((err) => {
+                const field = Array.isArray(err?.loc)
+                    ? err.loc.filter((p: unknown) => p !== 'body').join('.')
+                    : '';
+                return field ? `${field}: ${err?.msg ?? 'invalid value'}` : err?.msg ?? 'invalid value';
+            })
+            .join('; ');
+    }
+    if (detail && typeof detail === 'object') return JSON.stringify(detail);
+    return 'Something went wrong';
+}
+
 export const get = async ({ url, body, session, onError }: { url: string, body?: object, session: Session, onError: onErrorCallback }) => {
     try {
         let combinedUrl = `${apiUrl}${url}`;
