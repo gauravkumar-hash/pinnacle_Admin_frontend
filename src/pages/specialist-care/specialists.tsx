@@ -103,20 +103,21 @@ const DayAvailabilityPicker = ({
 };
 
 // ── Reusable CC emails input ──────────────────────────────────────────────────
-const CCEmailsInput = ({ value = [], onChange }: { value?: string[]; onChange?: (v: string[]) => void }) => {
+const CCEmailsInput = ({ value, onChange }: { value?: string[] | null; onChange?: (v: string[]) => void }) => {
+  const emails = value ?? [];
   const [input, setInput] = useState("");
   const add = () => {
     const trimmed = input.trim();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
-    if (value.includes(trimmed)) { setInput(""); return; }
-    onChange?.([...value, trimmed]);
+    if (emails.includes(trimmed)) { setInput(""); return; }
+    onChange?.([...emails, trimmed]);
     setInput("");
   };
   return (
     <div>
       <Space wrap style={{ marginBottom: 8 }}>
-        {value.map((email) => (
-          <Tag key={email} closable icon={<MailOutlined />} color="blue" onClose={() => onChange?.(value.filter((e) => e !== email))}>
+        {emails.map((email) => (
+          <Tag key={email} closable icon={<MailOutlined />} color="blue" onClose={() => onChange?.(emails.filter((e) => e !== email))}>
             {email}
           </Tag>
         ))}
