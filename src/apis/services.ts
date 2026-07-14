@@ -45,6 +45,8 @@ export interface Service {
   available_time_slots?: string;
   day_availability?: Record<string, string[]>;
   active: boolean;
+  blocked_dates?: string[];
+  blocked_today?: boolean;
   display_order?: number;
   created_at: string;
   updated_at?: string;
@@ -118,3 +120,40 @@ export const deleteService = async (
   }
   return res.json();
 };
+
+// Blocks/unblocks a single date only (defaults to today on the backend, SG time).
+// Unlike active=false, the service stays visible and bookable on other dates.
+const setServiceBlocked = async (
+  session: Session,
+  id: number,
+  blocked: boolean,
+  onError: onErrorCallback,
+  blockDate?: string, // "YYYY-MM-DD"
+) => {
+  const formData = new FormData();
+  if (blockDate) formData.append("block_date", blockDate);
+  const res = await fetch(`${URLS.services}/${id}/${blocked ? "block" : "unblock"}`, {
+    method: "POST",
+    headers: getHeaders(session, true),
+    body: formData,
+  });
+  if (!res.ok) {
+    onError(res.status, (await res.json())?.detail);
+    return;
+  }
+  return res.json();
+};
+
+export const blockService = (
+  session: Session,
+  id: number,
+  onError: onErrorCallback,
+  blockDate?: string,
+) => setServiceBlocked(session, id, true, onError, blockDate);
+
+export const unblockService = (
+  session: Session,
+  id: number,
+  onError: onErrorCallback,
+  blockDate?: string,
+) => setServiceBlocked(session, id, false, onError, blockDate);
