@@ -15,6 +15,7 @@ import {
   message,
   Popconfirm,
   Tag,
+  Tooltip,
   Avatar,
   Upload,
 } from "antd";
@@ -36,6 +37,8 @@ import {
   createSpecialist,
   updateSpecialist,
   deleteSpecialist,
+  blockSpecialist,
+  unblockSpecialist,
   Specialist,
 } from "../../apis/specialist-care";
 
@@ -235,13 +238,30 @@ export const SpecialistsScreen = () => {
   });
 
   const toggleActive = (record: Specialist) => {
-    updateSpecialist(
-      session!,
-      record.id,
-      { active: !record.active },
-      onError,
-    ).then(() => {
+    // Backend PATCH expects form data, not JSON
+    const formData = new FormData();
+    formData.append("active", record.active ? "false" : "true");
+    updateSpecialist(session!, record.id, formData, onError).then((result) => {
+      if (!result) return;
       queryClient.invalidateQueries({ queryKey: ["specialists"] });
+      messageApi.success(
+        record.active
+          ? "Specialist deactivated — hidden from the app until reactivated"
+          : "Specialist activated",
+      );
+    });
+  };
+
+  const toggleBlockedToday = (record: Specialist) => {
+    const action = record.blocked_today ? unblockSpecialist : blockSpecialist;
+    action(session!, record.id, onError).then((result) => {
+      if (!result) return;
+      queryClient.invalidateQueries({ queryKey: ["specialists"] });
+      messageApi.success(
+        record.blocked_today
+          ? "Unblocked — available today again"
+          : "Blocked for today only — still visible in the app and bookable on other dates",
+      );
     });
   };
 
@@ -311,10 +331,35 @@ export const SpecialistsScreen = () => {
           : "-",
     },
     {
+      title: "Available Today",
+      dataIndex: "blocked_today",
+      render: (blocked: boolean, record: Specialist) => {
+        const today = new Date().toISOString().slice(0, 10);
+        const upcomingBlocks = (record.blocked_dates ?? []).filter((d) => d > today);
+        return (
+          <Space direction="vertical" size={4}>
+            <Tooltip title="Blocks today only — the specialist stays visible in the app and bookable on other dates">
+              <Switch
+                checked={!blocked}
+                checkedChildren="Yes"
+                unCheckedChildren="Blocked"
+                onChange={() => toggleBlockedToday(record)}
+              />
+            </Tooltip>
+            {upcomingBlocks.map((d) => (
+              <Tag key={d} color="red">Blocked {d}</Tag>
+            ))}
+          </Space>
+        );
+      },
+    },
+    {
       title: "Active",
       dataIndex: "active",
       render: (v: boolean, record: Specialist) => (
-        <Switch checked={v} onChange={() => toggleActive(record)} />
+        <Tooltip title="Turning this off hides the specialist from the app entirely. To make them unavailable for just today, use 'Available Today' instead.">
+          <Switch checked={v} onChange={() => toggleActive(record)} />
+        </Tooltip>
       ),
     },
     {
