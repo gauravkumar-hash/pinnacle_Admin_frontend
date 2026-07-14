@@ -65,6 +65,8 @@ export interface Specialist {
   day_availability?: Record<string, string[]>;
   display_order: number;
   active: boolean;
+  blocked_dates?: string[];
+  blocked_today?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -239,6 +241,43 @@ export const deleteSpecialist = async (
   }
   return res.json();
 };
+
+// Blocks/unblocks a single date only (defaults to today on the backend, SG time).
+// Unlike active=false, the specialist stays visible and bookable on other dates.
+const setSpecialistBlocked = async (
+  session: Session,
+  id: number,
+  blocked: boolean,
+  onError: onErrorCallback,
+  blockDate?: string, // "YYYY-MM-DD"
+) => {
+  const formData = new FormData();
+  if (blockDate) formData.append("block_date", blockDate);
+  const res = await fetch(`${URLS.specialists}/${id}/${blocked ? "block" : "unblock"}`, {
+    method: "POST",
+    headers: getHeaders(session, true),
+    body: formData,
+  });
+  if (!res.ok) {
+    onError(res.status, (await res.json())?.detail);
+    return;
+  }
+  return res.json();
+};
+
+export const blockSpecialist = (
+  session: Session,
+  id: number,
+  onError: onErrorCallback,
+  blockDate?: string,
+) => setSpecialistBlocked(session, id, true, onError, blockDate);
+
+export const unblockSpecialist = (
+  session: Session,
+  id: number,
+  onError: onErrorCallback,
+  blockDate?: string,
+) => setSpecialistBlocked(session, id, false, onError, blockDate);
 
 // ── Appointment Requests ───────────────────────────────────────────────────────
 
