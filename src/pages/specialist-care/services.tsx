@@ -17,6 +17,7 @@ import {
   Tag,
   Tooltip,
   Avatar,
+  Badge,
   Upload,
 } from "antd";
 import {
@@ -141,6 +142,7 @@ export const ServicesScreen = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [form] = Form.useForm();
+  const [imageFile, setImageFile] = useState<UploadFile[]>([]);
   const [clinicLogoFile, setClinicLogoFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
@@ -203,6 +205,9 @@ export const ServicesScreen = () => {
       formData.append("active", values.active ? "true" : "false");
 
       // Add image files if selected
+      if (imageFile.length > 0 && imageFile[0].originFileObj) {
+        formData.append("image", imageFile[0].originFileObj);
+      }
       if (clinicLogoFile.length > 0 && clinicLogoFile[0].originFileObj) {
         formData.append("clinic_logo", clinicLogoFile[0].originFileObj);
       }
@@ -217,6 +222,7 @@ export const ServicesScreen = () => {
       setModalOpen(false);
       form.resetFields();
       setEditing(null);
+      setImageFile([]);
       setClinicLogoFile([]);
     },
   });
@@ -268,6 +274,14 @@ export const ServicesScreen = () => {
     });
 
     // Set existing images
+    if (record.image_url) {
+      setImageFile([
+        { uid: "-1", name: "image", status: "done", url: record.image_url },
+      ]);
+    } else {
+      setImageFile([]);
+    }
+
     if (record.clinic_logo_path) {
       setClinicLogoFile([
         { uid: "-1", name: "clinic_logo", status: "done", url: record.clinic_logo_path },
@@ -282,6 +296,7 @@ export const ServicesScreen = () => {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
+    setImageFile([]);
     setClinicLogoFile([]);
     setModalOpen(true);
   };
@@ -295,7 +310,16 @@ export const ServicesScreen = () => {
       dataIndex: "service_name",
       render: (v: string, r: Service) => (
         <Space>
-          <Avatar shape="square" size={40} src={r.clinic_logo_path} icon={<PictureOutlined />} />
+          <Badge
+            count={
+              r.clinic_logo_path ? (
+                <Avatar src={r.clinic_logo_path} size={16} />
+              ) : undefined
+            }
+            offset={[-4, 32]}
+          >
+            <Avatar shape="square" size={40} src={r.image_url} icon={<PictureOutlined />} />
+          </Badge>
           <strong>{v}</strong>
         </Space>
       ),
@@ -410,6 +434,7 @@ export const ServicesScreen = () => {
             setModalOpen(false);
             setEditing(null);
             form.resetFields();
+            setImageFile([]);
             setClinicLogoFile([]);
           }}
           onOk={() => form.submit()}
@@ -511,6 +536,22 @@ export const ServicesScreen = () => {
                   rows={3}
                   placeholder="Detailed information about the service"
                 />
+              </Form.Item>
+              <Form.Item label="Service Image" className="col-span-2">
+                <Upload
+                  listType="picture-card"
+                  fileList={imageFile}
+                  maxCount={1}
+                  beforeUpload={() => false}
+                  onChange={({ fileList }) => setImageFile(fileList)}
+                >
+                  {imageFile.length === 0 && (
+                    <div>
+                      <UploadOutlined />
+                      <div style={{ marginTop: 8 }}>Upload Service Image</div>
+                    </div>
+                  )}
+                </Upload>
               </Form.Item>
               <Form.Item label="Clinic Logo" className="col-span-2">
                 <Upload
