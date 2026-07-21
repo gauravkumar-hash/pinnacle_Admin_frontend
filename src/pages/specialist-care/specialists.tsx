@@ -17,6 +17,7 @@ import {
   Tag,
   Tooltip,
   Avatar,
+  Badge,
   Upload,
 } from "antd";
 import {
@@ -142,6 +143,7 @@ export const SpecialistsScreen = () => {
   const [editing, setEditing] = useState<Specialist | null>(null);
   const [form] = Form.useForm();
   const [imageFile, setImageFile] = useState<UploadFile[]>([]);
+  const [clinicLogoFile, setClinicLogoFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${formatApiDetail(msg)}`);
@@ -214,6 +216,9 @@ export const SpecialistsScreen = () => {
       if (imageFile.length > 0 && imageFile[0].originFileObj) {
         formData.append("image", imageFile[0].originFileObj);
       }
+      if (clinicLogoFile.length > 0 && clinicLogoFile[0].originFileObj) {
+        formData.append("clinic_logo", clinicLogoFile[0].originFileObj);
+      }
 
       if (editing)
         return updateSpecialist(session!, editing.id, formData, onError);
@@ -226,6 +231,7 @@ export const SpecialistsScreen = () => {
       form.resetFields();
       setEditing(null);
       setImageFile([]);
+      setClinicLogoFile([]);
     },
   });
 
@@ -286,6 +292,14 @@ export const SpecialistsScreen = () => {
       setImageFile([]);
     }
 
+    if (record.clinic_logo_path) {
+      setClinicLogoFile([
+        { uid: "-1", name: "clinic_logo", status: "done", url: record.clinic_logo_path },
+      ]);
+    } else {
+      setClinicLogoFile([]);
+    }
+
     setModalOpen(true);
   };
 
@@ -293,6 +307,7 @@ export const SpecialistsScreen = () => {
     setEditing(null);
     form.resetFields();
     setImageFile([]);
+    setClinicLogoFile([]);
     setModalOpen(true);
   };
 
@@ -305,7 +320,16 @@ export const SpecialistsScreen = () => {
       title: "Doctor",
       render: (_: any, r: Specialist) => (
         <Space>
-          <Avatar src={r.image_url} icon={<UserOutlined />} />
+          <Badge
+            count={
+              r.clinic_logo_path ? (
+                <Avatar src={r.clinic_logo_path} size={16} />
+              ) : undefined
+            }
+            offset={[-4, 32]}
+          >
+            <Avatar src={r.image_url} icon={<UserOutlined />} />
+          </Badge>
           <span>
             <strong>
               {r.title} {r.name}
@@ -475,6 +499,22 @@ export const SpecialistsScreen = () => {
                     <div>
                       <UploadOutlined />
                       <div style={{ marginTop: 8 }}>Upload Photo</div>
+                    </div>
+                  )}
+                </Upload>
+              </Form.Item>
+              <Form.Item label="Clinic Logo" className="col-span-2">
+                <Upload
+                  listType="picture-card"
+                  fileList={clinicLogoFile}
+                  maxCount={1}
+                  beforeUpload={() => false}
+                  onChange={({ fileList }) => setClinicLogoFile(fileList)}
+                >
+                  {clinicLogoFile.length === 0 && (
+                    <div>
+                      <UploadOutlined />
+                      <div style={{ marginTop: 8 }}>Upload Clinic Logo</div>
                     </div>
                   )}
                 </Upload>
