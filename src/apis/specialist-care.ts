@@ -44,7 +44,7 @@ export interface Specialist {
   image_url?: string;
   clinic_name?: string;
   consultation_fee?: string;
-  clinic_photo_path?: string;
+  clinic_logo_path?: string;
   banner_image_path?: string;
   credentials?: string;
   short_bio?: string;
