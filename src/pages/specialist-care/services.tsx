@@ -15,6 +15,7 @@ import {
   message,
   Popconfirm,
   Tag,
+  Tooltip,
   Avatar,
   Upload,
 } from "antd";
@@ -36,6 +37,8 @@ import {
   createService,
   updateService,
   deleteService,
+  blockService,
+  unblockService,
   Service,
 } from "../../apis/services";
 
@@ -138,7 +141,7 @@ export const ServicesScreen = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [form] = Form.useForm();
-  const [clinicPhotoFile, setClinicPhotoFile] = useState<UploadFile[]>([]);
+  const [clinicLogoFile, setClinicLogoFile] = useState<UploadFile[]>([]);
 
   const onError = (status: number, msg: string) =>
     messageApi.error(`Error ${status}: ${formatApiDetail(msg)}`);
@@ -200,8 +203,8 @@ export const ServicesScreen = () => {
       formData.append("active", values.active ? "true" : "false");
 
       // Add image files if selected
-      if (clinicPhotoFile.length > 0 && clinicPhotoFile[0].originFileObj) {
-        formData.append("clinic_photo", clinicPhotoFile[0].originFileObj);
+      if (clinicLogoFile.length > 0 && clinicLogoFile[0].originFileObj) {
+        formData.append("clinic_logo", clinicLogoFile[0].originFileObj);
       }
 
       if (editing)
@@ -214,7 +217,7 @@ export const ServicesScreen = () => {
       setModalOpen(false);
       form.resetFields();
       setEditing(null);
-      setClinicPhotoFile([]);
+      setClinicLogoFile([]);
     },
   });
 
@@ -228,13 +231,30 @@ export const ServicesScreen = () => {
   });
 
   const toggleActive = (record: Service) => {
-    updateService(
-      session!,
-      record.id,
-      { active: !record.active },
-      onError,
-    ).then(() => {
+    // Backend PATCH expects form data, not JSON
+    const formData = new FormData();
+    formData.append("active", record.active ? "false" : "true");
+    updateService(session!, record.id, formData, onError).then((result) => {
+      if (!result) return;
       queryClient.invalidateQueries({ queryKey: ["services"] });
+      messageApi.success(
+        record.active
+          ? "Service deactivated — hidden from the app until reactivated"
+          : "Service activated",
+      );
+    });
+  };
+
+  const toggleBlockedToday = (record: Service) => {
+    const action = record.blocked_today ? unblockService : blockService;
+    action(session!, record.id, onError).then((result) => {
+      if (!result) return;
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      messageApi.success(
+        record.blocked_today
+          ? "Unblocked — available today again"
+          : "Blocked for today only — still visible in the app and bookable on other dates",
+      );
     });
   };
 
@@ -248,12 +268,12 @@ export const ServicesScreen = () => {
     });
 
     // Set existing images
-    if (record.clinic_photo_path) {
-      setClinicPhotoFile([
-        { uid: "-1", name: "clinic_photo", status: "done", url: record.clinic_photo_path },
+    if (record.clinic_logo_path) {
+      setClinicLogoFile([
+        { uid: "-1", name: "clinic_logo", status: "done", url: record.clinic_logo_path },
       ]);
     } else {
-      setClinicPhotoFile([]);
+      setClinicLogoFile([]);
     }
 
     setModalOpen(true);
@@ -262,7 +282,7 @@ export const ServicesScreen = () => {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
-    setClinicPhotoFile([]);
+    setClinicLogoFile([]);
     setModalOpen(true);
   };
 
@@ -275,7 +295,7 @@ export const ServicesScreen = () => {
       dataIndex: "service_name",
       render: (v: string, r: Service) => (
         <Space>
-          <Avatar shape="square" size={40} src={r.clinic_photo_path} icon={<PictureOutlined />} />
+          <Avatar shape="square" size={40} src={r.clinic_logo_path} icon={<PictureOutlined />} />
           <strong>{v}</strong>
         </Space>
       ),
@@ -302,10 +322,35 @@ export const ServicesScreen = () => {
           : "-",
     },
     {
+      title: "Available Today",
+      dataIndex: "blocked_today",
+      render: (blocked: boolean, record: Service) => {
+        const today = new Date().toISOString().slice(0, 10);
+        const upcomingBlocks = (record.blocked_dates ?? []).filter((d) => d > today);
+        return (
+          <Space direction="vertical" size={4}>
+            <Tooltip title="Blocks today only — the service stays visible in the app and bookable on other dates">
+              <Switch
+                checked={!blocked}
+                checkedChildren="Yes"
+                unCheckedChildren="Blocked"
+                onChange={() => toggleBlockedToday(record)}
+              />
+            </Tooltip>
+            {upcomingBlocks.map((d) => (
+              <Tag key={d} color="red">Blocked {d}</Tag>
+            ))}
+          </Space>
+        );
+      },
+    },
+    {
       title: "Active",
       dataIndex: "active",
       render: (v: boolean, record: Service) => (
-        <Switch checked={v} onChange={() => toggleActive(record)} />
+        <Tooltip title="Turning this off hides the service from the app entirely. To make it unavailable for just today, use 'Available Today' instead.">
+          <Switch checked={v} onChange={() => toggleActive(record)} />
+        </Tooltip>
       ),
     },
     {
@@ -365,7 +410,7 @@ export const ServicesScreen = () => {
             setModalOpen(false);
             setEditing(null);
             form.resetFields();
-            setClinicPhotoFile([]);
+            setClinicLogoFile([]);
           }}
           onOk={() => form.submit()}
           confirmLoading={saveMutation.isPending}
@@ -467,18 +512,18 @@ export const ServicesScreen = () => {
                   placeholder="Detailed information about the service"
                 />
               </Form.Item>
-              <Form.Item label="Clinic Photo" className="col-span-2">
+              <Form.Item label="Clinic Logo" className="col-span-2">
                 <Upload
                   listType="picture-card"
-                  fileList={clinicPhotoFile}
+                  fileList={clinicLogoFile}
                   maxCount={1}
                   beforeUpload={() => false}
-                  onChange={({ fileList }) => setClinicPhotoFile(fileList)}
+                  onChange={({ fileList }) => setClinicLogoFile(fileList)}
                 >
-                  {clinicPhotoFile.length === 0 && (
+                  {clinicLogoFile.length === 0 && (
                     <div>
                       <UploadOutlined />
-                      <div style={{ marginTop: 8 }}>Upload Clinic Photo</div>
+                      <div style={{ marginTop: 8 }}>Upload Clinic Logo</div>
                     </div>
                   )}
                 </Upload>
