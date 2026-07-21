@@ -26,6 +26,7 @@ export interface Service {
   service_name: string;
   clinic_name: string;
   consultation_fee?: string;
+  image_url?: string;
   clinic_logo_path?: string;
   banner_image_path?: string;
   bio?: string;
