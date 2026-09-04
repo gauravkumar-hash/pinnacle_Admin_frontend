@@ -133,7 +133,7 @@ const Sidebar = () => {
           },
         ],
       },
-      {
+   {
         key: "app_mgmt",
         label: "App Management",
         type: "group",
@@ -141,6 +141,11 @@ const Sidebar = () => {
           {
             key: "/notifications",
             label: "App Notifications",
+            icon: <NotificationOutlined />,
+          },
+          {
+            key: "/marketing-campaigns",
+            label: "Marketing Campaigns",
             icon: <NotificationOutlined />,
           },
         ],

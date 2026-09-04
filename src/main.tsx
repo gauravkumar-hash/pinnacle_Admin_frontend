@@ -62,7 +62,7 @@ import BranchAppointmentHours from "./pages/branches/appointment-hours.tsx";
 import HealthReportTable from "./components/HealthReportTable.tsx";
 import { SpecialisationsScreen } from "./pages/specialist-care/specialisations";
 import { SpecialistsScreen } from "./pages/specialist-care/specialists";
-
+import { MarketingCampaignsScreen } from "./pages/marketing-campaigns/index.tsx";
 import { ServicesScreen } from "./pages/specialist-care/services";
 import { AppointmentRequestsScreen } from "./pages/specialist-care/appointment-requests";
 import { AppointmentControlsScreen } from "./pages/appointments/controls";
@@ -209,6 +209,9 @@ function AdminApp() {
           <Route path="specialists" element={<SpecialistsScreen />} />
           <Route path="requests" element={<AppointmentRequestsScreen />} />
           <Route path="email-template" element={<EmailTemplatesScreen />} />
+        </Route>
+            <Route path="/marketing-campaigns" element={<ScreenLayout />}>
+          <Route index element={<MarketingCampaignsScreen />} />
         </Route>
         <Route path="/branches" element={<ScreenLayout />}>
           <Route index element={<BranchesScreen />} />
