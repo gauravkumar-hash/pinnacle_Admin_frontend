@@ -24,6 +24,8 @@ export interface Campaign {
   failed_count: number;
   skipped_count: number;
   pending_count: number;
+  delivered_count: number;
+  undelivered_count: number;
   created_at: string | null;
   started_at: string | null;
   completed_at: string | null;
@@ -31,10 +33,16 @@ export interface Campaign {
 
 export interface RecipientRow {
   account_id: string;
+  name: string | null;
+  mobile: string | null;
   status: string;
   attempts: number;
   last_error: string | null;
   sent_at: string | null;
+  delivery: "delivered" | "undelivered" | "sent" | "not_sent";
+  receipt_status: "ok" | "error" | null;
+  receipt_error: string | null;
+  receipt_checked_at: string | null;
 }
 
 async function authHeaders() {
