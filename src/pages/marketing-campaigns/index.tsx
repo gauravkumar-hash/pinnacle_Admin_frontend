@@ -126,8 +126,9 @@ export function MarketingCampaignsScreen() {
                 status={r.status === "sending" ? "active" : undefined}
               />
               <div style={{ fontSize: 12, color: "#666" }}>
-                {r.sent_count.toLocaleString()} sent · {r.failed_count} failed ·{" "}
-                {r.skipped_count} skipped · {r.total_recipients.toLocaleString()} total
+                {r.sent_count.toLocaleString()} sent · {r.delivered_count.toLocaleString()} delivered ·{" "}
+                {r.undelivered_count} undelivered · {r.failed_count} failed · {r.skipped_count} skipped ·{" "}
+                {r.total_recipients.toLocaleString()} total
               </div>
             </div>
           );
@@ -317,11 +318,18 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
           <Space size="large" wrap style={{ marginBottom: 16 }}>
             <Stat label="Status" value={c.status} />
             <Stat label="Total" value={c.total_recipients.toLocaleString()} />
-            <Stat label="Sent" value={c.sent_count.toLocaleString()} />
+            <Stat label="Sent (accepted)" value={c.sent_count.toLocaleString()} />
+            <Stat label="Delivered" value={c.delivered_count.toLocaleString()} />
+            <Stat label="Undelivered" value={c.undelivered_count.toLocaleString()} />
             <Stat label="Failed" value={c.failed_count.toLocaleString()} />
             <Stat label="Skipped" value={c.skipped_count.toLocaleString()} />
             <Stat label="Pending" value={c.pending_count.toLocaleString()} />
           </Space>
+          <p style={{ color: "#999", fontSize: 12, marginTop: -8 }}>
+            &ldquo;Sent&rdquo; = Expo accepted the push. &ldquo;Delivered&rdquo; = Expo
+            receipt confirmed hand-off to Google/Apple (polled every ~5 min). Whether the
+            user actually opened it is not tracked.
+          </p>
 
           <p style={{ color: "#666", whiteSpace: "pre-wrap" }}>{c.body}</p>
 
@@ -351,10 +359,32 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
             dataSource={recipQ.data?.rows ?? []}
             pagination={{ pageSize: 20 }}
             columns={[
-              { title: "Account", dataIndex: "account_id", ellipsis: true },
-              { title: "Status", dataIndex: "status", width: 120 },
-              { title: "Tries", dataIndex: "attempts", width: 70 },
-              { title: "Error", dataIndex: "last_error", ellipsis: true },
+              {
+                title: "Patient",
+                dataIndex: "name",
+                render: (n: string | null, r) => n || <span style={{ color: "#999" }}>{r.account_id}</span>,
+              },
+              { title: "Mobile", dataIndex: "mobile", width: 140, render: (m: string | null) => m || "—" },
+              {
+                title: "Delivery",
+                dataIndex: "delivery",
+                width: 130,
+                render: (d: string) => {
+                  const color =
+                    d === "delivered" ? "green" : d === "undelivered" ? "red" : d === "sent" ? "blue" : "default";
+                  const label =
+                    d === "sent" ? "accepted" : d === "not_sent" ? "not sent" : d;
+                  return <Tag color={color}>{label}</Tag>;
+                },
+              },
+              { title: "Queue status", dataIndex: "status", width: 120 },
+              { title: "Tries", dataIndex: "attempts", width: 60 },
+              {
+                title: "Error",
+                width: 220,
+                ellipsis: true,
+                render: (_: unknown, r) => r.receipt_error || r.last_error || "—",
+              },
               {
                 title: "Sent at",
                 dataIndex: "sent_at",
