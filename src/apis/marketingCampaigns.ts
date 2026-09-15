@@ -116,3 +116,31 @@ export const CONSENT_NOTICE_DEFAULT_BODY =
   "notification preferences and opt out. Appointment reminders are not affected.";
 
 export const OPT_OUT_DEEP_LINK = { pathname: "/profile/notification-settings" };
+
+// Push notifications render their body as plain text — a URL typed into the message
+// is never a tappable link on the OS level. To make "tap to open" work, put the
+// destination here instead; the app reads `data.url` on notification tap.
+export const buildCampaignData = (linkUrl?: string | null) =>
+  linkUrl ? { url: linkUrl } : OPT_OUT_DEEP_LINK;
+
+export interface PatientPreferenceRow {
+  account_id: string;
+  name: string | null;
+  mobile: string | null;
+  marketing_opt_in: boolean;
+  opted_out_at: string | null;
+  opt_out_source: string | null;
+}
+
+export const listPatientPreferences = (
+  params: { opt_in?: boolean; search?: string; limit?: number; offset?: number } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (params.opt_in !== undefined) qs.set("opt_in", String(params.opt_in));
+  if (params.search) qs.set("search", params.search);
+  qs.set("limit", String(params.limit ?? 50));
+  qs.set("offset", String(params.offset ?? 0));
+  return req<{ total: number; rows: PatientPreferenceRow[] }>(
+    `/patient-preferences?${qs.toString()}`,
+  );
+};

@@ -11,12 +11,14 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
   message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { ContentView } from "@/components/Content";
 import {
+  buildCampaignData,
   Campaign,
   CampaignStatus,
   CampaignType,
@@ -25,8 +27,9 @@ import {
   deleteCampaign,
   getCampaign,
   listCampaigns,
+  listPatientPreferences,
   listRecipients,
-  OPT_OUT_DEEP_LINK,
+  PatientPreferenceRow,
   pauseCampaign,
   prepareCampaign,
   resumeCampaign,
@@ -188,12 +191,27 @@ export function MarketingCampaignsScreen() {
         </Button>
       }
     >
-      <Table
-        rowKey="id"
-        loading={qry.isPending}
-        dataSource={qry.data ?? []}
-        columns={columns}
-        pagination={{ pageSize: 20 }}
+      <Tabs
+        items={[
+          {
+            key: "campaigns",
+            label: "Campaigns",
+            children: (
+              <Table
+                rowKey="id"
+                loading={qry.isPending}
+                dataSource={qry.data ?? []}
+                columns={columns}
+                pagination={{ pageSize: 20 }}
+              />
+            ),
+          },
+          {
+            key: "preferences",
+            label: "Opt-in / Opt-out",
+            children: <PreferencesTab />,
+          },
+        ]}
       />
 
       <CreateModal
@@ -206,6 +224,91 @@ export function MarketingCampaignsScreen() {
 
       <DetailDrawer id={detailId} onClose={() => setDetailId(null)} />
     </ContentView>
+  );
+}
+
+/* --------------------------------------------------------- opt-in/out preferences */
+function PreferencesTab() {
+  const [optIn, setOptIn] = useState<boolean | undefined>(undefined);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  const prefQ = useQuery({
+    queryKey: ["patient-preferences", optIn, search, page],
+    queryFn: () =>
+      listPatientPreferences({
+        opt_in: optIn,
+        search: search || undefined,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      }),
+  });
+
+  const columns: ColumnsType<PatientPreferenceRow> = [
+    {
+      title: "Patient",
+      dataIndex: "name",
+      render: (n: string | null, r) => n || <span style={{ color: "#999" }}>{r.account_id}</span>,
+    },
+    { title: "Mobile", dataIndex: "mobile", width: 160, render: (m: string | null) => m || "—" },
+    {
+      title: "Marketing notifications",
+      dataIndex: "marketing_opt_in",
+      width: 180,
+      render: (v: boolean) => <Tag color={v ? "green" : "red"}>{v ? "Opted in" : "Opted out"}</Tag>,
+    },
+    {
+      title: "Opted out at",
+      dataIndex: "opted_out_at",
+      width: 170,
+      render: (d: string | null) => (d ? new Date(d).toLocaleString() : "—"),
+    },
+    { title: "Opt-out source", dataIndex: "opt_out_source", width: 150, render: (s: string | null) => s || "—" },
+  ];
+
+  return (
+    <>
+      <Space style={{ margin: "12px 0" }} wrap>
+        <Input.Search
+          placeholder="Search by name or mobile"
+          allowClear
+          style={{ width: 240 }}
+          onSearch={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+        />
+        <Select
+          allowClear
+          placeholder="All patients"
+          style={{ width: 180 }}
+          value={optIn}
+          onChange={(v) => {
+            setOptIn(v);
+            setPage(1);
+          }}
+          options={[
+            { value: true, label: "Opted in" },
+            { value: false, label: "Opted out" },
+          ]}
+        />
+        <span style={{ color: "#999" }}>{prefQ.data?.total ?? 0} patients</span>
+      </Space>
+      <Table
+        rowKey="account_id"
+        size="small"
+        loading={prefQ.isPending}
+        dataSource={prefQ.data?.rows ?? []}
+        columns={columns}
+        pagination={{
+          current: page,
+          pageSize,
+          total: prefQ.data?.total ?? 0,
+          onChange: setPage,
+        }}
+      />
+    </>
   );
 }
 
@@ -237,9 +340,16 @@ function CreateModal({
       confirmLoading={confirmLoading}
       okText="Create"
       onOk={() =>
-        form.validateFields().then((v: { type: CampaignType; title: string; body: string }) =>
-          onSubmit({ ...v, data: OPT_OUT_DEEP_LINK }),
-        )
+        form
+          .validateFields()
+          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string }) =>
+            onSubmit({
+              type: v.type,
+              title: v.title,
+              body: v.body,
+              data: buildCampaignData(v.linkUrl),
+            }),
+          )
       }
       destroyOnClose
       width={620}
@@ -275,9 +385,17 @@ function CreateModal({
           name="body"
           label="Notification message"
           rules={[{ required: true, max: 500 }]}
-          extra="Tapping the notification opens the in-app Notification Settings screen where the user can opt out."
+          extra="Push notifications only ever show plain text — a URL typed here will NOT be tappable. Use the Link field below if you want the notification to open something on tap."
         >
           <Input.TextArea rows={4} maxLength={500} showCount />
+        </Form.Item>
+        <Form.Item
+          name="linkUrl"
+          label="Link (optional)"
+          rules={[{ type: "url", warningOnly: true, message: "Should be a valid URL" }]}
+          extra="Where tapping the notification takes the user. Leave blank to open the in-app Notification Settings screen instead."
+        >
+          <Input placeholder="https://example.com/promo" />
         </Form.Item>
       </Form>
     </Modal>
