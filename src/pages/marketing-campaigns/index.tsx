@@ -253,10 +253,23 @@ function PreferencesTab() {
     },
     { title: "Mobile", dataIndex: "mobile", width: 160, render: (m: string | null) => m || "—" },
     {
+      title: "All notifications",
+      dataIndex: "enable_notifications",
+      width: 160,
+      render: (v: boolean) => <Tag color={v ? "green" : "red"}>{v ? "On" : "Muted"}</Tag>,
+    },
+    {
       title: "Marketing notifications",
       dataIndex: "marketing_opt_in",
       width: 180,
-      render: (v: boolean) => <Tag color={v ? "green" : "red"}>{v ? "Opted in" : "Opted out"}</Tag>,
+      // When the master switch is off nothing sends, so an "Opted in" marketing flag is
+      // misleading on its own - show it as overridden.
+      render: (v: boolean, r) =>
+        !r.enable_notifications ? (
+          <Tag color="default">Overridden</Tag>
+        ) : (
+          <Tag color={v ? "green" : "red"}>{v ? "Opted in" : "Opted out"}</Tag>
+        ),
     },
     {
       title: "Opted out at",

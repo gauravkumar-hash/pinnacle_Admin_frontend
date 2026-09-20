@@ -127,6 +127,8 @@ export interface PatientPreferenceRow {
   account_id: string;
   name: string | null;
   mobile: string | null;
+  /** Master switch. false = this patient receives no notifications at all. */
+  enable_notifications: boolean;
   marketing_opt_in: boolean;
   opted_out_at: string | null;
   opt_out_source: string | null;
