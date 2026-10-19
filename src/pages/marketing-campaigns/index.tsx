@@ -130,7 +130,9 @@ export function MarketingCampaignsScreen() {
               />
               <div style={{ fontSize: 12, color: "#666" }}>
                 {r.sent_count.toLocaleString()} sent · {r.delivered_count.toLocaleString()} delivered ·{" "}
-                {r.undelivered_count} undelivered · {r.failed_count} failed · {r.skipped_count} skipped ·{" "}
+                {r.undelivered_count} undelivered · {r.opened_count.toLocaleString()} opened ·{" "}
+                {r.ignored_count.toLocaleString()} ignored ·{" "}
+                {r.failed_count} failed · {r.skipped_count} skipped ·{" "}
                 {r.total_recipients.toLocaleString()} total
               </div>
             </div>
@@ -416,8 +418,15 @@ function CreateModal({
 }
 
 /* -------------------------------------------------------------- detail drawer */
+// Share of patients reached (opened + ignored), so opened% + ignored% = 100
+const pct = (n: number, c: Campaign) => {
+  const reached = c.opened_count + c.ignored_count;
+  return reached ? ((n / reached) * 100).toFixed(1) : "0.0";
+};
+
 function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
   const [recipStatus, setRecipStatus] = useState<string | undefined>(undefined);
+  const [recipPage, setRecipPage] = useState(1);
 
   const campaignQ = useQuery({
     queryKey: ["marketing-campaign", id],
@@ -430,8 +439,10 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
   });
 
   const recipQ = useQuery({
-    queryKey: ["marketing-campaign-recipients", id, recipStatus],
-    queryFn: () => listRecipients(id as string, { status: recipStatus, limit: 100 }),
+    // Server-side paging: campaigns can have thousands of recipients
+    queryKey: ["marketing-campaign-recipients", id, recipStatus, recipPage],
+    queryFn: () =>
+      listRecipients(id as string, { status: recipStatus, limit: 20, offset: (recipPage - 1) * 20 }),
     enabled: !!id,
   });
 
@@ -452,14 +463,18 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
             <Stat label="Sent (accepted)" value={c.sent_count.toLocaleString()} />
             <Stat label="Delivered" value={c.delivered_count.toLocaleString()} />
             <Stat label="Undelivered" value={c.undelivered_count.toLocaleString()} />
+            <Stat label="Opened (clicked)" value={`${c.opened_count.toLocaleString()} (${pct(c.opened_count, c)}%)`} />
+            <Stat label="Ignored" value={`${c.ignored_count.toLocaleString()} (${pct(c.ignored_count, c)}%)`} />
             <Stat label="Failed" value={c.failed_count.toLocaleString()} />
             <Stat label="Skipped" value={c.skipped_count.toLocaleString()} />
             <Stat label="Pending" value={c.pending_count.toLocaleString()} />
           </Space>
           <p style={{ color: "#999", fontSize: 12, marginTop: -8 }}>
             &ldquo;Sent&rdquo; = Expo accepted the push. &ldquo;Delivered&rdquo; = Expo
-            receipt confirmed hand-off to Google/Apple (polled every ~5 min). Whether the
-            user actually opened it is not tracked.
+            receipt confirmed hand-off to Google/Apple (polled every ~5 min). &ldquo;Opened&rdquo;
+            = the patient tapped it; &ldquo;Ignored&rdquo; = delivered but never tapped. Both count
+            patients (not devices); % is of opened + ignored. Taps are only reported by app versions
+            that support it, so patients on older versions show as ignored.
           </p>
 
           <p style={{ color: "#666", whiteSpace: "pre-wrap" }}>{c.body}</p>
@@ -471,13 +486,18 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
               placeholder="All"
               style={{ width: 180 }}
               value={recipStatus}
-              onChange={setRecipStatus}
+              onChange={(v) => {
+                setRecipStatus(v);
+                setRecipPage(1);
+              }}
               options={[
                 { value: "sent", label: "sent" },
                 { value: "pending", label: "pending" },
                 { value: "failed", label: "failed" },
                 { value: "skipped", label: "skipped" },
                 { value: "invalid_token", label: "invalid_token" },
+                { value: "opened", label: "opened" },
+                { value: "ignored", label: "ignored" },
               ]}
             />
             <span style={{ color: "#999" }}>{recipQ.data?.total ?? 0} rows</span>
@@ -488,13 +508,20 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
             size="small"
             loading={recipQ.isPending}
             dataSource={recipQ.data?.rows ?? []}
-            pagination={{ pageSize: 20 }}
+            pagination={{
+              current: recipPage,
+              pageSize: 20,
+              total: recipQ.data?.total ?? 0,
+              onChange: setRecipPage,
+              showSizeChanger: false,
+            }}
             columns={[
               {
                 title: "Patient",
                 dataIndex: "name",
                 render: (n: string | null, r) => n || <span style={{ color: "#999" }}>{r.account_id}</span>,
               },
+              { title: "NRIC", dataIndex: "nric", width: 110, render: (n: string | null) => n || "—" },
               { title: "Mobile", dataIndex: "mobile", width: 140, render: (m: string | null) => m || "—" },
               {
                 title: "Delivery",
@@ -507,6 +534,12 @@ function DetailDrawer({ id, onClose }: { id: string | null; onClose: () => void 
                     d === "sent" ? "accepted" : d === "not_sent" ? "not sent" : d;
                   return <Tag color={color}>{label}</Tag>;
                 },
+              },
+              {
+                title: "Opened at",
+                dataIndex: "opened_at",
+                width: 170,
+                render: (d: string | null) => (d ? new Date(d).toLocaleString() : "—"),
               },
               { title: "Queue status", dataIndex: "status", width: 120 },
               { title: "Tries", dataIndex: "attempts", width: 60 },

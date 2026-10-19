@@ -26,6 +26,10 @@ export interface Campaign {
   pending_count: number;
   delivered_count: number;
   undelivered_count: number;
+  /** Patients who tapped the notification (only from app versions that report taps). */
+  opened_count: number;
+  /** Patients whose push was delivered but who never tapped it. */
+  ignored_count: number;
   created_at: string | null;
   started_at: string | null;
   completed_at: string | null;
@@ -43,6 +47,8 @@ export interface RecipientRow {
   receipt_status: "ok" | "error" | null;
   receipt_error: string | null;
   receipt_checked_at: string | null;
+  opened_at: string | null;
+  nric: string | null;
 }
 
 async function authHeaders() {
