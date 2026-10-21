@@ -76,6 +76,10 @@ interface TimeInterval {
   end: number; // minutes from midnight
   cutoff_time?: number; // cutoff time in minutes
   max_appointments_per_session?: number; // max appointments per session
+  // Not edited on this page, but carried through so saving here does not reset them (hours are replaced on save)
+  max_bookings?: number;
+  max_clinic_bookings?: number | null;
+  max_corporate_bookings?: number | null;
 }
 
 interface OperatingHours {
@@ -121,6 +125,9 @@ const convertApiToUiFormat = (
         cutoff_time: hour.cutoff_time || 0,
         max_appointments_per_session:
           hour.max_appointments_per_session || undefined,
+        max_bookings: hour.max_bookings,
+        max_clinic_bookings: hour.max_clinic_bookings ?? null,
+        max_corporate_bookings: hour.max_corporate_bookings ?? null,
       }));
     }
   });
@@ -143,6 +150,9 @@ const convertUiToApiFormat = (
         cutoff_time: interval.cutoff_time || 0,
         max_appointments_per_session:
           interval.max_appointments_per_session || null,
+        max_bookings: interval.max_bookings || 1,
+        max_clinic_bookings: interval.max_clinic_bookings ?? null,
+        max_corporate_bookings: interval.max_corporate_bookings ?? null,
       }));
     }
   });

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from "react"
-import { Card, Button, Typography, Modal, Form, Input, InputNumber, Select } from "antd"
+import { Card, Button, Typography, Modal, Form, Input, InputNumber, Select, message } from "antd"
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons"
 
 const { Title, Text } = Typography
@@ -40,6 +40,7 @@ interface TimeSelectionConfig {
     min?: number
     max?: number
     defaultValue?: any
+    help?: string
   }[]
   validation?: (values: any) => string | null
 }
@@ -226,6 +227,12 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({ interval, onUpdate,
           {interval.cutoff_time && interval.cutoff_time > 0 && (
             <div className="text-xs opacity-90">Cutoff: {interval.cutoff_time}m</div>
           )}
+          {interval.max_clinic_bookings != null && (
+            <div className="text-xs opacity-90">Clinic: {interval.max_clinic_bookings}</div>
+          )}
+          {interval.max_corporate_bookings != null && (
+            <div className="text-xs opacity-90">Corporate: {interval.max_corporate_bookings}</div>
+          )}
         </div>
         <div className="flex flex-col gap-1 ml-1">
           <Button
@@ -391,6 +398,7 @@ const IntervalFormModal: React.FC<IntervalFormModalProps> = ({
         const error = config.validation(values)
         if (error) {
           form.setFields([{ name: 'general', errors: [error] }])
+          message.error(error) // There is no 'general' field in this form to show the error
           return
         }
       }
@@ -440,6 +448,7 @@ const IntervalFormModal: React.FC<IntervalFormModalProps> = ({
               key={field.id}
               name={field.id}
               label={field.label}
+              extra={field.help}
               rules={field.required ? [{ required: true, message: `Please enter ${field.label.toLowerCase()}` }] : []}
             >
               {field.type === 'number' ? (
@@ -779,6 +788,9 @@ export default function AppointmentTimeSelection({
                             let timeStr = `${interval.start_time}-${interval.end_time}`
                             if (interval.max_bookings && interval.max_bookings > 1) {
                               timeStr += ` (Max: ${interval.max_bookings} slots, Cutoff: ${interval.cutoff_time} mins)`
+                            }
+                            if (interval.max_clinic_bookings != null || interval.max_corporate_bookings != null) {
+                              timeStr += ` (Clinic: ${interval.max_clinic_bookings ?? 'any'}, Corporate: ${interval.max_corporate_bookings ?? 'any'})`
                             }
                             return timeStr
                           })

@@ -7,6 +7,9 @@ export interface AppointmentInterval {
   end_time: string
   cutoff_time?: number
   max_bookings?: number
+  max_appointments_per_session?: number | null
+  max_clinic_bookings?: number | null
+  max_corporate_bookings?: number | null
   [key: string]: unknown
 }
 
@@ -68,7 +71,11 @@ export const convertToAppointmentFormat = (hoursResponse: BranchOperatingHoursRe
         start_time: interval.start_time as string,
         end_time: interval.end_time as string,
         cutoff_time: (interval.cutoff_time as number) || 0,
-        max_bookings: (interval.max_bookings as number) || 1
+        max_bookings: (interval.max_bookings as number) || 1,
+        // Carried through so saving here does not wipe them (the hours are replaced on save)
+        max_appointments_per_session: (interval.max_appointments_per_session as number | null) ?? null,
+        max_clinic_bookings: (interval.max_clinic_bookings as number | null) ?? null,
+        max_corporate_bookings: (interval.max_corporate_bookings as number | null) ?? null
       }))
     }
   })
@@ -105,7 +112,10 @@ export const convertOperatingHoursToApiFormat = (operatingHoursData: Appointment
       start_time: interval.start_time,
       end_time: interval.end_time,
       cutoff_time: interval.cutoff_time || 0,
-      max_bookings: interval.max_bookings || 1
+      max_bookings: interval.max_bookings || 1,
+      max_appointments_per_session: interval.max_appointments_per_session ?? null,
+      max_clinic_bookings: interval.max_clinic_bookings ?? null,
+      max_corporate_bookings: interval.max_corporate_bookings ?? null
     }))
 
     // For branch hours (basic, no cutoff_time or max_bookings)

@@ -11,6 +11,7 @@ import {
   Space,
   Tag,
   DatePicker,
+  InputNumber,
   Typography,
   Card,
   Breadcrumb,
@@ -48,7 +49,9 @@ const { Title } = Typography;
 const { RangePicker } = DatePicker;
 
 // Using types from generated API client
-type AppointmentCorporateCode = CorporateCodeDetails;
+type AppointmentCorporateCode = CorporateCodeDetails & {
+  max_bookings_per_slot?: number | null; // Not in the generated client yet
+};
 
 export default function AppointmentCorporateCodes() {
   const navigate = useNavigate();
@@ -144,9 +147,13 @@ export default function AppointmentCorporateCodes() {
     setEditingRecord(record);
     form.setFieldsValue({
       ...record,
+      // Either end may be empty (no start / no expiry)
       validity_period:
-        record.valid_from && record.valid_to
-          ? [dayjs(record.valid_from), dayjs(record.valid_to)]
+        record.valid_from || record.valid_to
+          ? [
+              record.valid_from ? dayjs(record.valid_from) : null,
+              record.valid_to ? dayjs(record.valid_to) : null,
+            ]
           : null,
       patient_survey: record.patient_survey || {},
       only_primary_user: record.only_primary_user || false,
@@ -226,11 +233,13 @@ export default function AppointmentCorporateCodes() {
         organization: values.organization,
         patient_survey: values.patient_survey,
         only_primary_user: values.only_primary_user || false,
-        valid_from: values.validity_period?.[0]?.toISOString(),
-        valid_to: values.validity_period?.[1]?.toISOString(),
+        // Whole days: the picker keeps the current time of day. null clears the date (omitting it keeps the old one)
+        valid_from: values.validity_period?.[0]?.startOf("day").toISOString() ?? null,
+        valid_to: values.validity_period?.[1]?.endOf("day").toISOString() ?? null,
         is_active: values.is_active ?? true,
         max_appointments_total: values.max_appointments_total || null,
         max_appointments_per_day: values.max_appointments_per_day || null,
+        max_bookings_per_slot: values.max_bookings_per_slot ?? null,
         service_group_ids: values.service_group_ids || [],
         onsite_branches:
           values.onsite_branches?.map((branch: any) => ({
@@ -275,29 +284,26 @@ export default function AppointmentCorporateCodes() {
       key: "validity",
       width: 200,
       render: (_: unknown, record: AppointmentCorporateCode) => {
-        if (!record.valid_from || !record.valid_to) {
+        if (!record.valid_from && !record.valid_to) {
           return <Tag color="default">No expiry</Tag>;
         }
 
         const now = dayjs();
-        const validFrom = dayjs(record.valid_from);
-        const validTo = dayjs(record.valid_to);
+        const validFrom = record.valid_from ? dayjs(record.valid_from) : null;
+        const validTo = record.valid_to ? dayjs(record.valid_to) : null;
 
-        let status = { color: "default", text: "No expiry" };
-
-        if (now.isBefore(validFrom)) {
+        let status = { color: "green", text: "Active" };
+        if (validFrom && now.isBefore(validFrom)) {
           status = { color: "blue", text: "Upcoming" };
-        } else if (now.isAfter(validTo)) {
+        } else if (validTo && now.isAfter(validTo)) {
           status = { color: "red", text: "Expired" };
-        } else if (now.isAfter(validFrom) && now.isBefore(validTo)) {
-          status = { color: "green", text: "Active" };
         }
 
         return (
           <div>
             <div className="text-sm">
-              {validFrom.format("DD MMM YYYY")} -{" "}
-              {validTo.format("DD MMM YYYY")}
+              {validFrom ? validFrom.format("DD MMM YYYY") : "No start"} -{" "}
+              {validTo ? validTo.format("DD MMM YYYY") : "No expiry"}
             </div>
             <Tag color={status.color}>{status.text}</Tag>
           </div>
@@ -384,6 +390,9 @@ export default function AppointmentCorporateCodes() {
             {record.is_active ? "Active" : "Inactive"}
           </Tag>
           {record.only_primary_user && <Tag color="purple">Primary Only</Tag>}
+          {record.max_bookings_per_slot != null && (
+            <Tag color="orange">{record.max_bookings_per_slot} / 15 min</Tag>
+          )}
         </Space>
       ),
     },
@@ -584,9 +593,13 @@ export default function AppointmentCorporateCodes() {
             <Form.Item
               label="Validity Period"
               name="validity_period"
-              help="Leave empty for no expiry date"
+              help="Leave empty for no expiry date. Either end can be left empty."
             >
-              <RangePicker format="DD MMM YYYY" style={{ width: "100%" }} />
+              <RangePicker
+                format="DD MMM YYYY"
+                style={{ width: "100%" }}
+                allowEmpty={[true, true]}
+              />
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-4">
@@ -614,6 +627,19 @@ export default function AppointmentCorporateCodes() {
                 />
               </Form.Item>
             </div>
+
+            <Form.Item
+              label="Max Bookings per 15 min (per branch)"
+              name="max_bookings_per_slot"
+              help="How many of a branch's corporate slots this code can see and book in each 15 min. Counts all corporate bookings in that slot, so limits of different codes do not add up. Leave empty for no code limit."
+            >
+              <InputNumber
+                min={0}
+                precision={0}
+                style={{ width: "100%" }}
+                placeholder="Leave empty for no code limit"
+              />
+            </Form.Item>
 
             <Form.Item
               label="Patient Survey Questions"

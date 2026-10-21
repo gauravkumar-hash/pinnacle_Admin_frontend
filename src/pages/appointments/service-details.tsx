@@ -4,11 +4,15 @@ import { Button, Space, message, Typography, Card, Modal, Form, Input, InputNumb
 import { ColumnsType } from "antd/es/table"
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { ErrorBoundary } from "../../components/ErrorBoundary"
 import { QueryStateHandler } from "../../components/QueryStateHandler"
 import { ErrorAlert } from "../../components/ErrorHandling"
 import { useErrorHandler } from "../../hooks/useErrorHandler"
 import { DebounceSelect } from "../../components/DebounceSelect"
+import { DragHandle, SortableTableRow, SortableListItem } from "../../components/DragSort"
 import {
   getServiceGroupApiAdminAppointmentsV1ServiceGroupsGroupIdGet,
   getServicesApiAdminAppointmentsV1ServicesGet,
@@ -150,6 +154,40 @@ export default function ServiceDetails() {
     }
   })
 
+  // Drag-and-drop reordering for the services table
+  const [reordering, setReordering] = useState(false)
+  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const handleServiceReorder = async ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+
+    const oldIndex = services.findIndex((s) => s.id === active.id)
+    const newIndex = services.findIndex((s) => s.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(services, oldIndex, newIndex)
+    const changed = reordered
+      .map((service, index) => ({ service, index }))
+      .filter(({ service, index }) => service.index !== index)
+
+    setReordering(true)
+    try {
+      await Promise.all(
+        changed.map(({ service, index }) =>
+          updateServiceApiAdminAppointmentsV1ServicesServiceIdPut({
+            serviceId: service.id,
+            requestBody: { index } as ServiceUpdate
+          })
+        )
+      )
+      await queryClient.invalidateQueries({ queryKey: ['services', groupId] })
+    } catch (error: any) {
+      handleMutationError(error, 'service reorder')
+    } finally {
+      setReordering(false)
+    }
+  }
+
   const handleServiceSave = async (values: any) => {
     const serviceData = {
       name: values.name,
@@ -157,7 +195,7 @@ export default function ServiceDetails() {
       display_price: values.display_price,
       index: values.index,
       min_booking_ahead_days: values.min_booking_ahead_days || undefined,
-      sgimed_inventory: values.sgimed_inventory || undefined,
+      sgimed_inventory: values.sgimed_inventory || null, // null removes the inventory (omitting it keeps the current one)
       restricted_branches: values.restricted_branches || undefined,
       tests: values.tests?.map(({ name, exclusion }: { name: string, exclusion: string }) => ({ name, exclusion: exclusion ?? '' })) || [],
       group_id: groupId!
@@ -211,6 +249,12 @@ export default function ServiceDetails() {
 
   // Table columns for services
   const serviceColumns: ColumnsType<ServiceDetails> = [
+    {
+      title: '',
+      key: 'sort',
+      width: 30,
+      render: () => <DragHandle />
+    },
     {
       title: 'Order',
       dataIndex: 'index',
@@ -359,17 +403,22 @@ export default function ServiceDetails() {
           emptyDescription="Create your first service for this service group."
         >
           {(data: ServiceDetails[]) => (
-            <Table
-              columns={serviceColumns}
-              dataSource={data}
-              rowKey="id"
-              loading={loading || createServiceMutation.isPending || updateServiceMutation.isPending}
-              pagination={{
-                showSizeChanger: true,
-                pageSize: 50,
-                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
-              }}
-            />
+            <DndContext sensors={dragSensors} modifiers={[restrictToVerticalAxis]} onDragEnd={handleServiceReorder}>
+              <SortableContext items={data.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                <Table
+                  columns={serviceColumns}
+                  dataSource={data}
+                  rowKey="id"
+                  components={{ body: { row: SortableTableRow } }}
+                  loading={loading || createServiceMutation.isPending || updateServiceMutation.isPending || reordering}
+                  pagination={{
+                    showSizeChanger: true,
+                    pageSize: 50,
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+                  }}
+                />
+              </SortableContext>
+            </DndContext>
           )}
         </QueryStateHandler>
 
@@ -505,38 +554,53 @@ export default function ServiceDetails() {
             </Form.Item>
 
             <Form.List name="tests">
-              {(fields, { add, remove }) => (
-                <>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">Test Requirements</span>
-                    <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
-                      Add Test
-                    </Button>
-                  </div>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <div key={key} className="grid grid-cols-5 gap-2 mb-2">
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'name']}
-                        className="col-span-2"
-                        rules={[{ required: true, message: 'Test name is required' }]}
-                      >
-                        <Input placeholder="Test name" />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'exclusion']}
-                        className="col-span-2"
-                      >
-                        <Input placeholder="Exclusion/Note" />
-                      </Form.Item>
-                      <Button type="text" danger onClick={() => remove(name)}>
-                        Remove
+              {(fields, { add, remove, move }) => {
+                const onTestDragEnd = ({ active, over }: DragEndEvent) => {
+                  if (!over || active.id === over.id) return
+                  const oldIndex = fields.findIndex((f) => f.key.toString() === active.id)
+                  const newIndex = fields.findIndex((f) => f.key.toString() === over.id)
+                  if (oldIndex !== -1 && newIndex !== -1) move(oldIndex, newIndex)
+                }
+
+                return (
+                  <>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium">Test Requirements</span>
+                      <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                        Add Test
                       </Button>
                     </div>
-                  ))}
-                </>
-              )}
+                    <DndContext sensors={dragSensors} modifiers={[restrictToVerticalAxis]} onDragEnd={onTestDragEnd}>
+                      <SortableContext items={fields.map((f) => f.key.toString())} strategy={verticalListSortingStrategy}>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <SortableListItem key={key} id={key.toString()}>
+                            <div className="grid grid-cols-5 gap-2">
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'name']}
+                                className="col-span-2"
+                                rules={[{ required: true, message: 'Test name is required' }]}
+                              >
+                                <Input placeholder="Test name" />
+                              </Form.Item>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'exclusion']}
+                                className="col-span-2"
+                              >
+                                <Input placeholder="Exclusion/Note" />
+                              </Form.Item>
+                              <Button type="text" danger onClick={() => remove(name)}>
+                                Remove
+                              </Button>
+                            </div>
+                          </SortableListItem>
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  </>
+                )
+              }}
             </Form.List>
 
             <Form.Item className="mb-0 mt-6">

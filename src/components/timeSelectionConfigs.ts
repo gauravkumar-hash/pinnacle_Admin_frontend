@@ -4,6 +4,8 @@ interface TimeSelectionValues {
   end_time: string;
   cutoff_time?: number;
   max_bookings?: number;
+  max_clinic_bookings?: number | null;
+  max_corporate_bookings?: number | null;
   delivery_zones?: string;
   max_deliveries?: number;
   max_queue_size?: number;
@@ -20,6 +22,7 @@ export interface TimeSelectionConfig {
     min?: number
     max?: number
     defaultValue?: string | number | boolean
+    help?: string
   }[]
   validation?: (values: TimeSelectionValues) => string | null
 }
@@ -55,6 +58,24 @@ export const APPOINTMENT_CONFIG: TimeSelectionConfig = {
       max: 100, 
       defaultValue: 1,
       required: true
+    },
+    {
+      id: 'max_clinic_bookings',
+      label: 'Max Clinic Patient Bookings',
+      type: 'number',
+      min: 0,
+      max: 100,
+      required: false,
+      help: 'Per 15 min, for patients without a corporate code. Empty = no separate limit, 0 = clinic patients cannot book.'
+    },
+    {
+      id: 'max_corporate_bookings',
+      label: 'Max Corporate Patient Bookings',
+      type: 'number',
+      min: 0,
+      max: 100,
+      required: false,
+      help: 'Per 15 min, for patients booking with a corporate code. Empty = no separate limit, 0 = corporate patients cannot book.'
     }
   ],
   validation: (values) => {
@@ -63,6 +84,12 @@ export const APPOINTMENT_CONFIG: TimeSelectionConfig = {
     }
     if (!values.max_bookings || values.max_bookings < 1) {
       return 'Max bookings must be at least 1'
+    }
+    if (values.max_clinic_bookings != null && values.max_clinic_bookings > values.max_bookings) {
+      return 'Max clinic patient bookings cannot be more than max bookings'
+    }
+    if (values.max_corporate_bookings != null && values.max_corporate_bookings > values.max_bookings) {
+      return 'Max corporate patient bookings cannot be more than max bookings'
     }
     return null
   }

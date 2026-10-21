@@ -2,13 +2,18 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Table, Button, Space, message, Typography, Card, Modal, Form, Input, InputNumber, Select, Tag, Alert, Breadcrumb } from "antd"
 import { ColumnsType } from "antd/es/table"
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons"
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined } from "@ant-design/icons"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { ErrorBoundary } from "../../components/ErrorBoundary"
 import { TableSkeleton } from "../../components/LoadingStates"
 import { ErrorAlert } from "../../components/ErrorHandling"
 import { useErrorHandler } from "../../hooks/useErrorHandler"
 import { DebounceSelect } from "../../components/DebounceSelect"
+import { DragHandle, SortableTableRow, SortableListItem } from "../../components/DragSort"
+import { arrayMove } from "@dnd-kit/sortable"
 import {
   getServiceGroupsApiAdminAppointmentsV1ServiceGroupsGet,
   createServiceGroupApiAdminAppointmentsV1ServiceGroupsPost,
@@ -20,8 +25,10 @@ import {
   deleteServiceApiAdminAppointmentsV1ServicesServiceIdDelete,
   getBranchesApiAdminAppointmentsV1BranchesGet,
   searchInventoryApiAdminAppointmentsV1InventorySearchGet,
-  getCorporateCodesApiAdminAppointmentsV1CorporateCodesGet
+  getCorporateCodesApiAdminAppointmentsV1CorporateCodesGet,
+  OpenAPI
 } from "../../services/client"
+import { request as __request } from "../../services/client/core/request"
 import type {
   ServiceGroupDetails,
   ServiceGroupCreate,
@@ -31,7 +38,8 @@ import type {
   ServiceUpdate,
   AppointmentServiceGroupType,
   BranchItem,
-  CorporateCodeDetails
+  CorporateCodeDetails,
+  ApiError
 } from "../../services/client"
 
 const { Title } = Typography
@@ -59,6 +67,15 @@ const timeSlotOptions = [
   { label: 'Morning', value: 'morning' },
   { label: 'Afternoon', value: 'afternoon' }
 ]
+
+// Not in the generated client yet: copies service groups with all their services under a corporate code (null = general)
+const duplicateServiceGroups = (requestBody: { group_ids: string[], corporate_code_id: string | null }) =>
+  __request<{ ids: string[] }>(OpenAPI, {
+    method: 'POST',
+    url: '/api/admin/appointments/v1/service-groups/duplicate',
+    body: requestBody,
+    mediaType: 'application/json'
+  })
 
 const serviceTypeLabels = {
   'no_detail': 'No Detail Required',
@@ -91,6 +108,10 @@ export default function AppointmentServices() {
   const [editingService, setEditingService] = useState<ServiceDetails | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [corporateCodeFilter, setCorporateCodeFilter] = useState<string | undefined>(undefined)
+  // Duplicate: ids being copied (null = modal closed), target corporate code (undefined = general)
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
+  const [duplicateGroupIds, setDuplicateGroupIds] = useState<string[] | null>(null)
+  const [duplicateTargetCode, setDuplicateTargetCode] = useState<string | undefined>(undefined)
   
   // State for form validation errors
   const [groupFormErrors, setGroupFormErrors] = useState<string[]>([])
@@ -99,6 +120,7 @@ export default function AppointmentServices() {
   const [serviceForm] = Form.useForm()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Error handlers for different operations
   const { handleError: handleMutationError } = useErrorHandler({
@@ -295,8 +317,8 @@ export default function AppointmentServices() {
       restricted_branches: (values.restricted_branches as string[]) || undefined,
       available_days: (values.available_days as string[]) || undefined,
       available_time_slots: (values.available_time_slots as string[]) || undefined,
-      // Explicitly set to undefined if empty string or null to remove corporate code
-      corporate_code_id: (values.corporate_code_id as string) || undefined
+      // null removes the corporate code (omitting it keeps the current one)
+      corporate_code_id: (values.corporate_code_id as string) || null
     }
     
     if (editingGroup) {
@@ -340,6 +362,54 @@ export default function AppointmentServices() {
     }
   }
 
+  // Drag-and-drop reordering for the service groups table
+  const [groupReordering, setGroupReordering] = useState(false)
+
+  const handleGroupReorder = async ({ active, over }: { active: { id: string | number }, over: { id: string | number } | null }) => {
+    if (!over || active.id === over.id) return
+
+    const oldIndex = serviceGroups.findIndex((g) => g.id === active.id)
+    const newIndex = serviceGroups.findIndex((g) => g.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(serviceGroups, oldIndex, newIndex)
+    const changed = reordered
+      .map((group, index) => ({ group, index: index + 1 }))
+      .filter(({ group, index }) => group.index !== index)
+
+    setGroupReordering(true)
+    try {
+      await Promise.all(
+        changed.map(({ group, index }) =>
+          updateServiceGroupApiAdminAppointmentsV1ServiceGroupsGroupIdPut({
+            groupId: group.id,
+            requestBody: { index } as ServiceGroupUpdate
+          })
+        )
+      )
+      await queryClient.invalidateQueries({ queryKey: ['service-groups'] })
+    } catch (error: any) {
+      handleMutationError(error, 'service group reorder')
+    } finally {
+      setGroupReordering(false)
+    }
+  }
+
+  const duplicateServiceGroupsMutation = useMutation({
+    mutationFn: duplicateServiceGroups,
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['service-groups'] })
+      queryClient.invalidateQueries({ queryKey: ['services'] })
+      message.success(`${response.ids.length} service group(s) duplicated`)
+      setDuplicateGroupIds(null)
+      setDuplicateTargetCode(undefined)
+      setSelectedGroupIds([])
+    },
+    onError: (error) => {
+      handleMutationError(error as ApiError, 'service group duplication')
+    }
+  })
+
   const handleDeleteGroup = (groupId: string) => {
     Modal.confirm({
       title: 'Delete Service Group',
@@ -356,6 +426,12 @@ export default function AppointmentServices() {
 
 
   const groupColumns: ColumnsType<AppointmentServiceGroup> = [
+    {
+      title: '',
+      key: 'sort',
+      width: 30,
+      render: () => <DragHandle />
+    },
     {
       title: 'Name',
       dataIndex: 'name',
@@ -426,7 +502,7 @@ export default function AppointmentServices() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       render: (_, record) => (
         <Space>
           <Button
@@ -444,6 +520,12 @@ export default function AppointmentServices() {
               setGroupModalVisible(true)
             }}
             title="Edit Group"
+          />
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            onClick={() => setDuplicateGroupIds([record.id])}
+            title="Duplicate Group"
           />
           <Button
             type="text"
@@ -488,6 +570,13 @@ export default function AppointmentServices() {
                   </Option>
                 ))}
               </Select>
+            <Button
+              icon={<CopyOutlined />}
+              disabled={selectedGroupIds.length === 0}
+              onClick={() => setDuplicateGroupIds(selectedGroupIds)}
+            >
+              Duplicate Selected{selectedGroupIds.length > 0 ? ` (${selectedGroupIds.length})` : ''}
+            </Button>
             <Button 
               type="primary" 
               icon={<PlusOutlined />}
@@ -546,18 +635,58 @@ export default function AppointmentServices() {
             </div>
           </Card>
         ) : (
-            <Table
-              columns={groupColumns}
-              dataSource={serviceGroups}
-              rowKey="id"
-              loading={loading || createServiceGroupMutation.isPending || updateServiceGroupMutation.isPending || deleteServiceGroupMutation.isPending}
-              pagination={{
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
-              }}
-            />
+            <DndContext sensors={dragSensors} modifiers={[restrictToVerticalAxis]} onDragEnd={handleGroupReorder}>
+              <SortableContext items={serviceGroups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
+                <Table
+                  columns={groupColumns}
+                  dataSource={serviceGroups}
+                  rowKey="id"
+                  components={{ body: { row: SortableTableRow } }}
+                  rowSelection={{
+                    selectedRowKeys: selectedGroupIds,
+                    onChange: (keys) => setSelectedGroupIds(keys as string[])
+                  }}
+                  loading={loading || createServiceGroupMutation.isPending || updateServiceGroupMutation.isPending || deleteServiceGroupMutation.isPending || groupReordering}
+                  pagination={{
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+                  }}
+                />
+              </SortableContext>
+            </DndContext>
         )}
+
+      {/* Duplicate Service Groups Modal */}
+      <Modal
+        title={`Duplicate ${duplicateGroupIds?.length ?? 0} Service Group(s)`}
+        open={duplicateGroupIds !== null}
+        okText="Duplicate"
+        confirmLoading={duplicateServiceGroupsMutation.isPending}
+        onOk={() => duplicateGroupIds && duplicateServiceGroupsMutation.mutate({
+          group_ids: duplicateGroupIds,
+          corporate_code_id: duplicateTargetCode ?? null
+        })}
+        onCancel={() => {
+          setDuplicateGroupIds(null)
+          setDuplicateTargetCode(undefined)
+        }}
+      >
+        <p className="mb-2">
+          Copies {(serviceGroupsData || []).filter(g => duplicateGroupIds?.includes(g.id)).map(g => g.name).join(', ') || 'the selected groups'} with
+          all their services, prices and test requirements. You can edit the copies afterwards.
+        </p>
+        <Select
+          placeholder="General (no corporate code)"
+          allowClear
+          value={duplicateTargetCode}
+          onChange={(value) => setDuplicateTargetCode(value)}
+          className="w-full"
+          showSearch
+          optionFilterProp="label"
+          options={corporateCodes.map((code: CorporateCodeDetails) => ({ value: code.id, label: `${code.code} - ${code.organization}` }))}
+        />
+      </Modal>
 
       {/* Service Group Modal */}
       <Modal
@@ -832,37 +961,52 @@ export default function AppointmentServices() {
           </Form.Item>
 
           <Form.List name="tests">
-            {(fields, { add, remove }) => (
-              <>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">Test Requirements</span>
-                  <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
-                    Add Test
-                  </Button>
-                </div>
-                {fields.map(({ key, name, ...restField }) => (
-                  <div key={key} className="grid grid-cols-5 gap-2 mb-2">
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'name']}
-                      className="col-span-2"
-                    >
-                      <Input placeholder="Test name" />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'exclusion']}
-                      className="col-span-2"
-                    >
-                      <Input placeholder="Exclusion/Note" />
-                    </Form.Item>
-                    <Button type="text" danger onClick={() => remove(name)}>
-                      Remove
+            {(fields, { add, remove, move }) => {
+              const onTestDragEnd = ({ active, over }: DragEndEvent) => {
+                if (!over || active.id === over.id) return
+                const oldIndex = fields.findIndex((f) => f.key.toString() === active.id)
+                const newIndex = fields.findIndex((f) => f.key.toString() === over.id)
+                if (oldIndex !== -1 && newIndex !== -1) move(oldIndex, newIndex)
+              }
+
+              return (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium">Test Requirements</span>
+                    <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                      Add Test
                     </Button>
                   </div>
-                ))}
-              </>
-            )}
+                  <DndContext sensors={dragSensors} modifiers={[restrictToVerticalAxis]} onDragEnd={onTestDragEnd}>
+                    <SortableContext items={fields.map((f) => f.key.toString())} strategy={verticalListSortingStrategy}>
+                      {fields.map(({ key, name, ...restField }) => (
+                        <SortableListItem key={key} id={key.toString()}>
+                          <div className="grid grid-cols-5 gap-2">
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'name']}
+                              className="col-span-2"
+                            >
+                              <Input placeholder="Test name" />
+                            </Form.Item>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'exclusion']}
+                              className="col-span-2"
+                            >
+                              <Input placeholder="Exclusion/Note" />
+                            </Form.Item>
+                            <Button type="text" danger onClick={() => remove(name)}>
+                              Remove
+                            </Button>
+                          </div>
+                        </SortableListItem>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </>
+              )
+            }}
           </Form.List>
 
           <Form.Item className="mb-0 mt-6">
