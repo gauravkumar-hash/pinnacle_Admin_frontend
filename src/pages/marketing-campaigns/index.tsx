@@ -357,12 +357,12 @@ function CreateModal({
       onOk={() =>
         form
           .validateFields()
-          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string }) =>
+          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string }) =>
             onSubmit({
               type: v.type,
               title: v.title,
               body: v.body,
-              data: buildCampaignData(v.linkUrl),
+              data: buildCampaignData(v.linkUrl, v.corporateCode),
             }),
           )
       }
@@ -411,6 +411,13 @@ function CreateModal({
           extra="Where tapping the notification takes the user. Leave blank to open the in-app Notification Settings screen instead."
         >
           <Input placeholder="https://example.com/promo" />
+        </Form.Item>
+        <Form.Item
+          name="corporateCode"
+          label="Corporate code (optional)"
+          extra="Tapping the notification opens Book Appointment with this code already applied. Overrides the Link above."
+        >
+          <Input placeholder="ACME2026" style={{ textTransform: "uppercase" }} />
         </Form.Item>
       </Form>
     </Modal>

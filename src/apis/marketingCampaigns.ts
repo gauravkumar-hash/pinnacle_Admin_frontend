@@ -126,8 +126,11 @@ export const OPT_OUT_DEEP_LINK = { pathname: "/profile/notification-settings" };
 // Push notifications render their body as plain text — a URL typed into the message
 // is never a tappable link on the OS level. To make "tap to open" work, put the
 // destination here instead; the app reads `data.url` on notification tap.
-export const buildCampaignData = (linkUrl?: string | null) =>
-  linkUrl ? { url: linkUrl } : OPT_OUT_DEEP_LINK;
+// A corporate code wins over the link: tap opens Book Appointment with the code applied.
+export const buildCampaignData = (linkUrl?: string | null, corporateCode?: string | null) =>
+  corporateCode
+    ? { pathname: "/appointment", params: { code: corporateCode.trim().toUpperCase() } }
+    : linkUrl ? { url: linkUrl } : OPT_OUT_DEEP_LINK;
 
 export interface PatientPreferenceRow {
   account_id: string;
