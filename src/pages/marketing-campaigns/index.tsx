@@ -366,12 +366,12 @@ function CreateModal({
       onOk={() =>
         form
           .validateFields()
-          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string; openBooking?: boolean; serviceId?: string }) =>
+          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string; openBooking?: boolean; serviceId?: string; openServices?: boolean }) =>
             onSubmit({
               type: v.type,
               title: v.title,
               body: v.body,
-              data: buildCampaignData(v.linkUrl, v.corporateCode, v.openBooking, publicServices.find((g) => g.id === v.serviceId)),
+              data: buildCampaignData(v.linkUrl, v.corporateCode, v.openBooking, publicServices.find((g) => g.id === v.serviceId), v.openServices),
             }),
           )
       }
@@ -433,6 +433,14 @@ function CreateModal({
           label="Open Book Appointment on tap"
           valuePropName="checked"
           extra="Tapping the notification opens Book Appointment, where the patient picks a service. Overrides the Link above; ignored if a corporate code is set."
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item
+          name="openServices"
+          label="Open service list on tap"
+          valuePropName="checked"
+          extra="Tapping the notification opens Select Service, where all services are listed. Overrides the Book Appointment switch and Link above; ignored if a corporate code or service is set."
         >
           <Switch />
         </Form.Item>

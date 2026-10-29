@@ -129,13 +129,15 @@ export const OPT_OUT_DEEP_LINK = { pathname: "/profile/notification-settings" };
 // A corporate code wins over the link: tap opens Book Appointment with the code applied.
 // A service opens that service's item list; picking an item lands on Book Appointment with it filled.
 // The app's detail screen reads the group from params and loads its items live by id.
-// openBooking opens Book Appointment without a code (works on app builds already released).
+// openServices opens Select Service (all services listed); openBooking opens Book Appointment without a code.
+// Both work on app builds already released.
 export interface CampaignService { id: string; name: string; title?: string | null; duration: number }
 export const buildCampaignData = (
   linkUrl?: string | null,
   corporateCode?: string | null,
   openBooking?: boolean,
   service?: CampaignService | null,
+  openServices?: boolean,
 ) =>
   corporateCode
     ? { pathname: "/appointment", params: { code: corporateCode.trim().toUpperCase() } }
@@ -147,6 +149,7 @@ export const buildCampaignData = (
           serviceGroup: JSON.stringify({ id: service.id, name: service.name, title: service.title ?? null, icon: "", duration: service.duration }),
         },
       }
+    : openServices ? { pathname: "/appointment/selection/service", params: { index: "0" } }
     : openBooking ? { pathname: "/appointment" }
     : linkUrl ? { url: linkUrl } : OPT_OUT_DEEP_LINK;
 
