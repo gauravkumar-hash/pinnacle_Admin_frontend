@@ -18,6 +18,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { ContentView } from "@/components/Content";
+import { getServiceGroupsApiAdminAppointmentsV1ServiceGroupsGet } from "@/services/client";
 import {
   buildCampaignData,
   Campaign,
@@ -348,6 +349,13 @@ function CreateModal({
     data: Record<string, unknown>;
   }) => void;
 }) {
+  // Corporate service groups need their code applied, which this path doesn't do — public ones only
+  const servicesQuery = useQuery({
+    queryKey: ["service-groups"],
+    queryFn: () => getServiceGroupsApiAdminAppointmentsV1ServiceGroupsGet(),
+    enabled: open,
+  });
+  const publicServices = (servicesQuery.data ?? []).filter((g) => !g.corporate_code_id);
   return (
     <Modal
       title="New campaign"
@@ -358,12 +366,12 @@ function CreateModal({
       onOk={() =>
         form
           .validateFields()
-          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string; openBooking?: boolean }) =>
+          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string; openBooking?: boolean; serviceId?: string }) =>
             onSubmit({
               type: v.type,
               title: v.title,
               body: v.body,
-              data: buildCampaignData(v.linkUrl, v.corporateCode, v.openBooking),
+              data: buildCampaignData(v.linkUrl, v.corporateCode, v.openBooking, publicServices.find((g) => g.id === v.serviceId)),
             }),
           )
       }
@@ -427,6 +435,20 @@ function CreateModal({
           extra="Tapping the notification opens Book Appointment, where the patient picks a service. Overrides the Link above; ignored if a corporate code is set."
         >
           <Switch />
+        </Form.Item>
+        <Form.Item
+          name="serviceId"
+          label="Open service (optional)"
+          extra="Tapping the notification opens this service's options; picking one lands on Book Appointment with it filled. Overrides the switch and Link above; ignored if a corporate code is set. Avoid membership-only services."
+        >
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            loading={servicesQuery.isLoading}
+            placeholder="Select a service"
+            options={publicServices.map((g) => ({ value: g.id, label: g.name }))}
+          />
         </Form.Item>
       </Form>
     </Modal>

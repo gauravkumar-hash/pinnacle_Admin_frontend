@@ -127,10 +127,26 @@ export const OPT_OUT_DEEP_LINK = { pathname: "/profile/notification-settings" };
 // is never a tappable link on the OS level. To make "tap to open" work, put the
 // destination here instead; the app reads `data.url` on notification tap.
 // A corporate code wins over the link: tap opens Book Appointment with the code applied.
+// A service opens that service's item list; picking an item lands on Book Appointment with it filled.
+// The app's detail screen reads the group from params and loads its items live by id.
 // openBooking opens Book Appointment without a code (works on app builds already released).
-export const buildCampaignData = (linkUrl?: string | null, corporateCode?: string | null, openBooking?: boolean) =>
+export interface CampaignService { id: string; name: string; title?: string | null; duration: number }
+export const buildCampaignData = (
+  linkUrl?: string | null,
+  corporateCode?: string | null,
+  openBooking?: boolean,
+  service?: CampaignService | null,
+) =>
   corporateCode
     ? { pathname: "/appointment", params: { code: corporateCode.trim().toUpperCase() } }
+    : service
+    ? {
+        pathname: "/appointment/selection/service/detail",
+        params: {
+          index: "0",
+          serviceGroup: JSON.stringify({ id: service.id, name: service.name, title: service.title ?? null, icon: "", duration: service.duration }),
+        },
+      }
     : openBooking ? { pathname: "/appointment" }
     : linkUrl ? { url: linkUrl } : OPT_OUT_DEEP_LINK;
 
