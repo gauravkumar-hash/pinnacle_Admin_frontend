@@ -10,6 +10,7 @@ import {
   Progress,
   Select,
   Space,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -357,12 +358,12 @@ function CreateModal({
       onOk={() =>
         form
           .validateFields()
-          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string }) =>
+          .then((v: { type: CampaignType; title: string; body: string; linkUrl?: string; corporateCode?: string; openBooking?: boolean }) =>
             onSubmit({
               type: v.type,
               title: v.title,
               body: v.body,
-              data: buildCampaignData(v.linkUrl, v.corporateCode),
+              data: buildCampaignData(v.linkUrl, v.corporateCode, v.openBooking),
             }),
           )
       }
@@ -418,6 +419,14 @@ function CreateModal({
           extra="Tapping the notification opens Book Appointment with this code already applied. Overrides the Link above."
         >
           <Input placeholder="ACME2026" style={{ textTransform: "uppercase" }} />
+        </Form.Item>
+        <Form.Item
+          name="openBooking"
+          label="Open Book Appointment on tap"
+          valuePropName="checked"
+          extra="Tapping the notification opens Book Appointment, where the patient picks a service. Overrides the Link above; ignored if a corporate code is set."
+        >
+          <Switch />
         </Form.Item>
       </Form>
     </Modal>

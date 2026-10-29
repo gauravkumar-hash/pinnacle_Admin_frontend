@@ -127,9 +127,11 @@ export const OPT_OUT_DEEP_LINK = { pathname: "/profile/notification-settings" };
 // is never a tappable link on the OS level. To make "tap to open" work, put the
 // destination here instead; the app reads `data.url` on notification tap.
 // A corporate code wins over the link: tap opens Book Appointment with the code applied.
-export const buildCampaignData = (linkUrl?: string | null, corporateCode?: string | null) =>
+// openBooking opens Book Appointment without a code (works on app builds already released).
+export const buildCampaignData = (linkUrl?: string | null, corporateCode?: string | null, openBooking?: boolean) =>
   corporateCode
     ? { pathname: "/appointment", params: { code: corporateCode.trim().toUpperCase() } }
+    : openBooking ? { pathname: "/appointment" }
     : linkUrl ? { url: linkUrl } : OPT_OUT_DEEP_LINK;
 
 export interface PatientPreferenceRow {
